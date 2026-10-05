@@ -102,12 +102,6 @@ export const isExplorationTool = (toolName: ToolName): boolean => EXPLORATION_TO
 export const isWebTool = (toolName: ToolName): boolean => WEB_TOOLS.has(normalizeToolName(toolName))
 export const isWebSearchTool = (toolName: ToolName): boolean => normalizeToolName(toolName) === OPENCODE_TOOLS.websearch
 
-/**
- * Tools that block the turn on a form the user must answer. Only `question`
- * does this today; the form itself renders as its own card.
- */
-export const blocksOnForm = isQuestionTool
-
 // ---------------------------------------------------------------------------
 // Input and metadata accessors
 // ---------------------------------------------------------------------------

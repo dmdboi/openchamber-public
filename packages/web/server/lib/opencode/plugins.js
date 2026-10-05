@@ -249,7 +249,8 @@ function decodePluginId(id) {
 }
 
 /** Accept a v1 string/tuple or a v2 `{package, options}` object. */
-function parsePluginRaw(raw) {
+/** @public Exposed to tests that dynamically import the plugins module. */
+export function parsePluginRaw(raw) {
   const entity = toPluginEntity(raw);
   if (!entity) {
     throw codedError('Plugin spec must be a string, [string, object], or {package, options}', 'INVALID_SPEC');
@@ -260,7 +261,8 @@ function parsePluginRaw(raw) {
 }
 
 /** Always v2: a bare string, or `{package, options}`. Never a tuple. */
-function serializePluginEntry(entry) {
+/** @public Exposed to tests that dynamically import the plugins module. */
+export function serializePluginEntry(entry) {
   const spec = validatePluginSpec(entry?.spec);
   const serialized = fromPluginEntity({ package: spec, options: hasOptions(entry?.options) ? entry.options : undefined });
   if (serialized === null) {
@@ -447,7 +449,5 @@ export {
   writePluginDirFile,
   deletePluginDirFile,
   encodePluginId,
-  decodePluginId,
-  parsePluginRaw,
-  serializePluginEntry,
+  decodePluginId
 };

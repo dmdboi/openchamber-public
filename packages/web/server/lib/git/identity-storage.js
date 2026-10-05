@@ -270,4 +270,6 @@ export const getProfiles = () => defaultStore().getProfiles();
 export const getProfile = (id) => defaultStore().getProfile(id);
 export const createProfile = (profileData) => defaultStore().createProfile(profileData);
 export const updateProfile = (id, updates) => defaultStore().updateProfile(id, updates);
+
+/** @public Read by Git routes through the lazy-loaded Git library. */
 export const deleteProfile = (id) => defaultStore().deleteProfile(id);

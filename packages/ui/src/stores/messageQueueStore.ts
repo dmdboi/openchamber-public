@@ -17,11 +17,11 @@ export type FollowUpBehavior = 'steer' | 'queue';
 
 const DEFAULT_FOLLOW_UP_BEHAVIOR: FollowUpBehavior = 'queue';
 
-export const isFollowUpBehavior = (value: unknown): value is FollowUpBehavior => (
+const isFollowUpBehavior = (value: unknown): value is FollowUpBehavior => (
     value === 'steer' || value === 'queue'
 );
 
-export const normalizeFollowUpBehavior = (
+const normalizeFollowUpBehavior = (
     value: unknown,
     legacyQueueModeEnabled?: boolean | null,
 ): FollowUpBehavior => {

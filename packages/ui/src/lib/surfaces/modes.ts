@@ -13,7 +13,7 @@ const BUILT_IN_CONTEXT_PANEL_MODES = [
   'terminal',
 ] as const;
 
-export type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];
+type BuiltInContextPanelMode = (typeof BUILT_IN_CONTEXT_PANEL_MODES)[number];
 export type PluginContextPanelMode = `plugin:${string}`;
 export type ContextPanelMode = BuiltInContextPanelMode | PluginContextPanelMode;
 
