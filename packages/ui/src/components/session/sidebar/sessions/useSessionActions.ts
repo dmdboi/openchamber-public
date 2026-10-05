@@ -9,7 +9,7 @@ import { useSessionUIStore } from '@/sync/session-ui-store';
 import { collectSessionSubtreeIds, runSessionSubtreeAction } from './sessionSubtreeActions';
 import { describeSessionActionError } from './sessionActionError';
 
-export type DeleteSessionSource = {
+type DeleteSessionSource = {
   archivedBucket?: boolean;
   hardDelete?: boolean;
   /** Bypass the confirmation dialog and delete/archive immediately. */

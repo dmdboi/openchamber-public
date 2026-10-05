@@ -141,7 +141,7 @@ export interface PendingFile {
   content: string;
 }
 
-export interface SkillDraft {
+interface SkillDraft {
   name: string;
   scope: SkillScope;
   source?: SkillSource;
@@ -212,7 +212,7 @@ let skillsGeneration = 0;
  * are kept instead of vanishing on one failed fetch. Managed-root skills
  * (`renamable`) are covered by the disk scan, so their absence is real.
  */
-export const mergePartialSkills = (
+const mergePartialSkills = (
   partial: DiscoveredSkill[],
   previous: DiscoveredSkill[],
 ): DiscoveredSkill[] => {

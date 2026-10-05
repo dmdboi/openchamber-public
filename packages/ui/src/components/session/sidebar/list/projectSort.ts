@@ -3,7 +3,7 @@ import type { ProjectSortOrder } from '@/stores/useSessionDisplayStore';
 /** The fields any project list needs to be sortable. Both the desktop sidebar
     and the mobile sessions drawer build their own richer project shapes on top
     of the store entries, so this stays structural. */
-export type SortableProject = {
+type SortableProject = {
   id: string;
   label?: string | null;
   path: string;

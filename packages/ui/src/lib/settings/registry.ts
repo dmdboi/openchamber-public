@@ -81,7 +81,7 @@ import {
   type UsageModelGroups,
 } from './parsers';
 
-export type SettingsScope = 'instance' | 'profile' | 'device';
+type SettingsScope = 'instance' | 'profile' | 'device';
 export type SettingsSurface = 'web' | 'desktop' | 'vscode' | 'mobile';
 
 /**
@@ -89,7 +89,7 @@ export type SettingsSurface = 'web' | 'desktop' | 'vscode' | 'mobile';
  * explicitly (not `DesktopSettings`) so the registry's type does not refer to
  * itself through the bindings; extend it when another field needs a sibling.
  */
-export type SettingsSiblingView = {
+type SettingsSiblingView = {
   readonly draftStartersCraftGoalAdded?: boolean;
   readonly draftStartersScheduleTaskAdded?: boolean;
   readonly workStatusHiddenSectionsExplicit?: boolean;
@@ -100,14 +100,14 @@ export type SettingsSiblingView = {
  * syntax on purpose: it keeps `SettingsFieldSpec<T>` assignable to
  * `SettingsFieldSpec<unknown>`, which is what the generic loops below iterate.
  */
-export type SettingsUiBinding<T> = {
+type SettingsUiBinding<T> = {
   read(): T | undefined;
   write(value: T, snapshot: SettingsSiblingView): void;
   /** Send changes of the backing store to the server (store-subscribing auto-save). */
   autoSave: boolean;
 };
 
-export type SettingsFieldSpec<T> = {
+type SettingsFieldSpec<T> = {
   scope: SettingsScope;
   parse(value: unknown, raw: SettingsRawDocument): T | undefined;
   ui?: SettingsUiBinding<T>;
@@ -603,7 +603,7 @@ export const SETTINGS_REGISTRY = {
   inputBarOffset: field({ scope: 'device', surfaces: ['mobile', 'web'], parse: parseFiniteNumber, ui: uiStore('inputBarOffset', (v) => useUIStore.getState().setInputBarOffset(v)) }),
 } as const;
 
-export type SettingsKey = keyof typeof SETTINGS_REGISTRY;
+type SettingsKey = keyof typeof SETTINGS_REGISTRY;
 
 type FieldValue<S> = S extends SettingsFieldSpec<infer T> ? T : never;
 
@@ -751,7 +751,7 @@ export const MIRRORED_KEYS = SETTINGS_KEYS.filter((key) => {
 });
 
 /** Shape of one field in the generated JSON snapshot the server and the VS Code bridge consume. */
-export type SettingsRegistrySnapshotField = {
+type SettingsRegistrySnapshotField = {
   scope: SettingsScope;
   perSurface?: true;
   surfaces?: readonly SettingsSurface[];
@@ -765,7 +765,7 @@ export type SettingsRegistrySnapshotField = {
   owner?: 'desktop-shell';
 };
 
-export type SettingsRegistrySnapshot = {
+type SettingsRegistrySnapshot = {
   version: 1;
   fields: Record<string, SettingsRegistrySnapshotField>;
 };

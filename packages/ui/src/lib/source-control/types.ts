@@ -201,7 +201,7 @@ export interface SourceControlUser extends SourceControlIdentity {
   email?: string;
 }
 
-export type SourceControlAuthError = {
+type SourceControlAuthError = {
   status: 'error';
   code: 'access-denied' | 'expired' | 'network' | 'provider-error';
   message: string;

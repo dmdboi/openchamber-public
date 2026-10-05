@@ -169,8 +169,6 @@ export type OpenchamberNotification = {
   desktopStdoutActive?: boolean
 }
 
-export type SyncEventType = SyncEvent["type"]
-
 /** A translated event together with the directory it belongs to. */
 export type RoutedSyncEvent = {
   directory: string

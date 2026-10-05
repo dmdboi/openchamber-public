@@ -300,7 +300,7 @@ const OPENCODE_REQUEST_TIMEOUT_MS = 30_000
 const isEventStreamUrl = (url: URL): boolean => url.pathname.endsWith("/event") || url.pathname.endsWith("/log")
 
 /** Header the server reads to resolve a Location; the value is URI-encoded on both ends. */
-export const OPENCODE_DIRECTORY_HEADER = "x-opencode-directory"
+const OPENCODE_DIRECTORY_HEADER = "x-opencode-directory"
 
 type RuntimeOpencodeClientConfig = {
   baseUrl: string
@@ -408,7 +408,7 @@ export type ProjectFileSearchHit = {
   extension?: string
 }
 
-export type FileInputLite = {
+type FileInputLite = {
   id?: string
   type: "file"
   mime: string
@@ -462,7 +462,7 @@ export type ProviderCatalog = {
  * distinguish a server-confirmed "no longer pending" permission (HTTP
  * 404) from a fetch failure (network error, malformed response).
  */
-export type FetchPermissionResult =
+type FetchPermissionResult =
   | { state: "ok"; permission: PermissionRequest }
   | { state: "resolved" }
   | { state: "unknown" }

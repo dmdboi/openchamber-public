@@ -1456,6 +1456,7 @@ const SimpleMarkdownRendererImpl: React.FC<{
   );
 };
 
+/** @public Consumed as a named export by the lazy Markdown renderer loader. */
 export const SimpleMarkdownRenderer = React.memo(SimpleMarkdownRendererImpl, (prev, next) => {
   const prevMermaidControls = prev.mermaidControls ?? DEFAULT_MERMAID_CONTROLS;
   const nextMermaidControls = next.mermaidControls ?? DEFAULT_MERMAID_CONTROLS;

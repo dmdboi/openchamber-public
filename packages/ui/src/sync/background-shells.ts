@@ -8,7 +8,7 @@ import { normalizeProjectPath } from '@/lib/projectResolution';
 // a session. A background command outlives the turn that started it: the
 // session goes idle and runs again when the command's result is handed back,
 // so this index is what keeps that pause visible as work (see
-// `useSessionTurnActive`) and what a background command's tool row reads to
+// `useSessionTurnActivity`) and what a background command's tool row reads to
 // know whether the command still runs.
 //
 // `shell.started` / `shell.ended` events keep it current for every directory.

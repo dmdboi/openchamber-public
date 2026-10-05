@@ -30,7 +30,7 @@ export const buildSessionTreeMoveMessages = (
 });
 
 /** The move request lost its answer after a new worktree was created; the worktree stays. */
-export class SessionMoveOutcomeUnknownError extends Error {
+class SessionMoveOutcomeUnknownError extends Error {
   constructor(cause: Error) {
     super(cause.message, { cause });
     this.name = 'SessionMoveOutcomeUnknownError';

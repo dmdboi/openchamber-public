@@ -11,7 +11,7 @@ type WorktreeSortOrder = 'recent' | 'manual' | 'a-z';
 // 'projects' is the grouped sidebar: project zones with worktree sub-headers,
 // optional Recent. 'timeline' is one recency-ordered list of root sessions
 // across every project, with three-line rows carrying project and branch.
-type SidebarViewMode = 'projects' | 'timeline';
+export type SidebarViewMode = 'projects' | 'timeline';
 type ProjectDisplayMode = 'all' | 'single';
 
 // The phone starts on the timeline: its sheet has no room for nested project
@@ -138,4 +138,7 @@ export const useSessionDisplayStore = create<SessionDisplayStore>()(
   ),
 );
 
-export type { ProjectDisplayMode, ProjectSortOrder, SidebarViewMode, WorktreeSortOrder };
+export type {
+  ProjectSortOrder,
+  WorktreeSortOrder
+};

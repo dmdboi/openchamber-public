@@ -808,7 +808,7 @@ function resolveDirectoryForBlockingRequest(
   return null
 }
 
-export function isFormRequestNotFoundError(error: unknown): boolean {
+function isFormRequestNotFoundError(error: unknown): boolean {
   if (error && typeof error === "object") {
     const status = (error as { status?: unknown }).status
     if (status === 404) return true
@@ -1449,37 +1449,6 @@ export async function deleteSession(sessionId: string, options?: DeleteSessionOp
     if ((error as { status?: number })?.status === 404) {
       if (isStaleRuntime(expectedRuntimeKey)) return false
       finalizeConfirmedSessionDeletion(sessionId, sessionDirectory, expectedRuntimeKey)
-      await cleanupDeletedChatDirectory(chatDirectoryCleanup)
-      return true
-    }
-    return false
-  }
-}
-
-/** Delete a session specifying which directory it lives in. Used by agent groups for cross-directory deletes. */
-export async function deleteSessionInDirectory(
-  sessionId: string,
-  directory: string,
-  expectedRuntimeKey = getRuntimeKey(),
-): Promise<boolean> {
-  if (isStaleRuntime(expectedRuntimeKey)) return false
-  const chatDirectoryCleanup = planChatDirectoryCleanup(sessionId, getGlobalSessionSnapshot(sessionId), directory)
-  try {
-    await cleanupReviewMetadataBeforeDelete(sessionId, directory, expectedRuntimeKey)
-    if (isStaleRuntime(expectedRuntimeKey)) return false
-    const deleted = await opencodeClient.deleteSession(sessionId, directory)
-    if (isStaleRuntime(expectedRuntimeKey)) return false
-    if (deleted !== true) {
-      throw new Error("session.delete failed: server did not confirm deletion")
-    }
-    finalizeConfirmedSessionDeletion(sessionId, directory, expectedRuntimeKey)
-    await cleanupDeletedChatDirectory(chatDirectoryCleanup)
-    return true
-  } catch (error) {
-    console.error("[session-actions] deleteSessionInDirectory failed", error)
-    if ((error as { status?: number })?.status === 404) {
-      if (isStaleRuntime(expectedRuntimeKey)) return false
-      finalizeConfirmedSessionDeletion(sessionId, directory, expectedRuntimeKey)
       await cleanupDeletedChatDirectory(chatDirectoryCleanup)
       return true
     }

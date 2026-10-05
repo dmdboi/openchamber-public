@@ -666,7 +666,7 @@ export function setExternallyViewedSession(directory: string, sessionId: string,
 }
 
 /** A side panel in this window shows a session of `directory`. */
-export function isDirectoryExternallyViewed(directory: string): boolean {
+function isDirectoryExternallyViewed(directory: string): boolean {
   pruneExternallyViewedSessions()
   const prefix = `${directory}\n`
   for (const key of externallyViewedSessions.keys()) {
@@ -3259,14 +3259,6 @@ export function useSessionMessagesResolved(sessionID: string, directory?: string
   )
 }
 
-/** Get parts for a specific message */
-export function useSessionParts(messageID: string, directory?: string) {
-  return useDirectorySync(
-    useCallback((state: State) => state.part[messageID] ?? EMPTY_PARTS, [messageID]),
-    directory,
-  )
-}
-
 const EMPTY_PARTS_BY_MESSAGE: Record<string, Part[]> = {}
 
 /**
@@ -3569,11 +3561,6 @@ export function useSessionDirectory(sessionID?: string | null, directory?: strin
   return (session as (typeof session & { directory?: string | null }) | undefined)?.directory ?? undefined
 }
 
-/** Get the SDK client */
-export function useSyncSDK() {
-  return useSyncRuntime().sdk
-}
-
 /** Get the current directory */
 export function useSyncDirectory() {
   return useSyncSystem().directory
@@ -3839,16 +3826,6 @@ export function buildSessionMessageRecordsSnapshot(
     list: nextList,
     byId: nextById,
   }
-}
-
-export function useSessionMessageCount(sessionID: string, directory?: string): number {
-  return useDirectorySync(
-    useCallback((state: State) => {
-      if (!sessionID) return 0
-      return state.message[sessionID]?.length ?? 0
-    }, [sessionID]),
-    directory,
-  )
 }
 
 export function useSessionRenderable(sessionID: string, directory?: string): boolean {
