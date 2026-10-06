@@ -36,12 +36,32 @@ import type {
   UpdateChangeRequestInput,
 } from '../source-control/types';
 
+import type {
+  GitBranchBase,
+  GitRemoteComparison,
+  GitStatusBase,
+  GitSubmoduleState,
+  GitWorktreeIdentity,
+  GitWorktreeValidationResult,
+} from '@openchamber/contracts/git';
+
 export type * from '../source-control/types';
 export type {
   GitIdentityProfile,
   GitIdentitySummary,
   GitIdentityTransport,
 } from './git-identity';
+// The Git wire shapes the shared UI and the VS Code extension host both answer.
+// Richer UI-only fields stay on the interfaces below.
+export type {
+  GitBranchDetails,
+  GitMergeInProgress,
+  GitRebaseInProgress,
+  GitRemoteComparison,
+  GitSubmoduleState,
+  GitWorktreeValidationError,
+  GitWorktreeValidationResult,
+} from '@openchamber/contracts/git';
 
 type RuntimePlatform = 'web' | 'desktop' | 'vscode';
 
@@ -178,38 +198,7 @@ export interface TerminalAPI {
   forceKill?(options: ForceKillOptions): Promise<void>;
 }
 
-interface GitStatusFile {
-  path: string;
-  index: string;
-  working_dir: string;
-}
-
-export interface GitMergeInProgress {
-  /** Short SHA of MERGE_HEAD */
-  head: string;
-  /** First line of MERGE_MSG */
-  message: string;
-}
-
-export interface GitRebaseInProgress {
-  /** Branch name being rebased */
-  headName: string;
-  /** Short SHA of the onto commit */
-  onto: string;
-}
-
-export interface GitRemoteComparison {
-  remote: string;
-  branch: string;
-  ahead: number;
-  behind: number;
-}
-
-export interface GitStatus {
-  current: string;
-  tracking: string | null;
-  ahead: number;
-  behind: number;
+export interface GitStatus extends GitStatusBase {
   /**
    * Set only when the branch has no upstream and `ahead` counts its commits
    * missing from this base ref (e.g. `origin/main`). Absent or null means no
@@ -217,22 +206,6 @@ export interface GitStatus {
    */
   aheadBase?: string | null;
   upstreamComparison?: GitRemoteComparison | null;
-  files: GitStatusFile[];
-  isClean: boolean;
-  /**
-   * Per-file line stats split by Git scope. A file with edits in both scopes
-   * appears in both maps; the values are never summed into each other.
-   */
-  diffStats?: {
-    /** HEAD -> index (`git diff --cached --numstat`). */
-    staged: Record<string, { insertions: number; deletions: number }>;
-    /** index -> working tree (`git diff --numstat`). */
-    working: Record<string, { insertions: number; deletions: number }>;
-  };
-  /** Present when a merge is in progress with conflicts */
-  mergeInProgress?: GitMergeInProgress | null;
-  /** Present when a rebase is in progress */
-  rebaseInProgress?: GitRebaseInProgress | null;
   /** Phase 1: reason for attention-required state */
   attentionReason?: 'merge' | 'rebase' | 'cherry-pick' | 'revert' | 'bisect' | null;
 }
@@ -244,22 +217,6 @@ export interface GitUnpushedBranchCounts {
 
 export interface GitDiffResponse {
   diff: string;
-}
-
-/**
- * What a submodule entry records. Its patch alone cannot say everything: a
- * submodule that only gained untracked files is modified in status while its
- * patch is empty. Commits are null where nothing is recorded, and
- * `worktreeCommit` is null when the submodule is not checked out.
- */
-export interface GitSubmoduleState {
-  headCommit: string | null;
-  indexCommit: string | null;
-  worktreeCommit: string | null;
-  hasTrackedChanges: boolean;
-  hasUntrackedFiles: boolean;
-  /** Unmerged: the index holds conflicting commits and no single recorded one. */
-  hasConflict: boolean;
 }
 
 /** Working-tree or staged diff for one status path. `submodule` is null for ordinary paths. */
@@ -317,22 +274,9 @@ export interface GetGitFileDiffOptions {
   staged?: boolean;
 }
 
-export interface GitBranchDetails {
-  current: boolean;
-  name: string;
-  commit: string;
-  label: string;
-  tracking?: string;
-  ahead?: number;
-  behind?: number;
-}
-
 export type GitBranchListOptions = { remote?: 'local' };
 
-export interface GitBranch {
-  all: string[];
-  current: string;
-  branches: Record<string, GitBranchDetails>;
+export interface GitBranch extends GitBranchBase {
   defaultBranches?: Record<string, string>;
 }
 
@@ -866,11 +810,7 @@ export interface CommitFileDiffResponse {
   isBinary: boolean;
 }
 
-export interface GitWorktreeInfo {
-  head: string;
-  name: string;
-  branch: string;
-  path: string;
+export interface GitWorktreeInfo extends GitWorktreeIdentity {
   provenance?: GitContributorWorktreeProvenance;
 }
 
@@ -881,20 +821,6 @@ export interface GitContributorWorktreeProvenance {
   push: 'destination-selection-required';
   /** git still registers the worktree, but its directory is gone (deleted outside git). */
   prunable?: boolean;
-}
-
-export interface GitWorktreeValidationError {
-  code: string;
-  message: string;
-}
-
-export interface GitWorktreeValidationResult {
-  ok: boolean;
-  errors: GitWorktreeValidationError[];
-  resolved?: {
-    mode?: 'new' | 'existing';
-    localBranch?: string | null;
-  };
 }
 
 export class GitWorktreeRequestError extends Error {

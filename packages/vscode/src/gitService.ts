@@ -14,7 +14,18 @@ import { execGit as executeGit } from './bridge-git-process-runtime';
 import { readConfig } from './opencodeConfig';
 import { resolveWorktreeDirectory } from './worktree-directory';
 import { readSubmoduleState, resolveGitPathTarget, type GitPathUnavailable, type GitSubmoduleState } from './gitPathDiff';
-import type { API as GitAPI, Repository, GitExtension, Status } from './git.d';
+import type {
+  GitBranchBase,
+  GitBranchDetails,
+  GitMergeInProgress,
+  GitRebaseInProgress,
+  GitStatusBase,
+  GitStatusFile,
+  GitWorktreeIdentity,
+  GitWorktreeValidationError,
+  GitWorktreeValidationResult,
+} from '@openchamber/contracts/git';
+import type { API as GitAPI, Repository, GitExtension, Status } from './git-api-types';
 
 let gitApi: GitAPI | null = null;
 let gitExtensionEnabled = false;
@@ -369,42 +380,7 @@ export async function isLinkedWorktree(directory: string): Promise<boolean> {
 
 // ============== Status Operations ==============
 
-interface GitStatusFile {
-  path: string;
-  index: string;
-  working_dir: string;
-}
-
-interface GitMergeInProgress {
-  /** Short SHA of MERGE_HEAD */
-  head: string;
-  /** First line of MERGE_MSG */
-  message: string;
-}
-
-interface GitRebaseInProgress {
-  /** Branch name being rebased */
-  headName: string;
-  /** Short SHA of the onto commit */
-  onto: string;
-}
-
-export interface GitStatusResult {
-  current: string;
-  tracking: string | null;
-  ahead: number;
-  behind: number;
-  files: GitStatusFile[];
-  isClean: boolean;
-  diffStats?: {
-    staged: Record<string, { insertions: number; deletions: number }>;
-    working: Record<string, { insertions: number; deletions: number }>;
-  };
-  /** Present when a merge is in progress with conflicts */
-  mergeInProgress?: GitMergeInProgress | null;
-  /** Present when a rebase is in progress */
-  rebaseInProgress?: GitRebaseInProgress | null;
-}
+export type GitStatusResult = GitStatusBase;
 
 type GitStatusOptions = {
   mode?: 'light';
@@ -633,21 +609,7 @@ async function getGitStatusRaw(directory: string): Promise<GitStatusResult> {
 
 // ============== Branch Operations ==============
 
-interface GitBranchDetails {
-  current: boolean;
-  name: string;
-  commit: string;
-  label: string;
-  tracking?: string;
-  ahead?: number;
-  behind?: number;
-}
-
-export interface GitBranchResult {
-  all: string[];
-  current: string;
-  branches: Record<string, GitBranchDetails>;
-}
+export type GitBranchResult = GitBranchBase;
 
 export async function getGitUnpushedBranchCounts(directory: string, requestedBranches: string[]): Promise<{ counts: Record<string, number> }> {
   const requested = [...new Set(requestedBranches)].filter(Boolean).slice(0, 5);
@@ -831,11 +793,7 @@ export async function deleteRemoteBranch(directory: string, branch: string, remo
 
 // ============== Worktree Operations ==============
 
-export interface GitWorktreeInfo {
-  head: string;
-  name: string;
-  branch: string;
-  path: string;
+export interface GitWorktreeInfo extends GitWorktreeIdentity {
   directoryCreated?: true;
   bootstrapStatus?: WorktreeBootstrapStatus;
   sourceFetchFailed?: true;
@@ -848,19 +806,7 @@ type WorktreeListEntry = {
   branch?: string;
 };
 
-interface GitWorktreeValidationError {
-  code: string;
-  message: string;
-}
-
-export interface GitWorktreeValidationResult {
-  ok: boolean;
-  errors: GitWorktreeValidationError[];
-  resolved?: {
-    mode?: 'new' | 'existing';
-    localBranch?: string | null;
-  };
-}
+export type { GitWorktreeValidationResult } from '@openchamber/contracts/git';
 
 export interface CreateGitWorktreePayload {
   mode?: 'new' | 'existing';

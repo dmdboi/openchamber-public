@@ -73,6 +73,26 @@ the binding retains its approved endpoints for independent repair. Provider cont
 and cache keys retain the single overall CAS revision, so stale contexts require a
 fresh owner read even when another capability caused the revision change.
 
+## Shared type contract
+
+`types.ts` re-exports the source-control type declarations from
+`@openchamber/contracts`, so existing `@/lib/source-control/types` imports keep
+working. It also owns `effectiveRepositoryBinding`, the helper that turns a
+binding read into the binding a repository acts under whether or not one was
+configured. The declarations are shapes only. Parsing, readiness checks and
+authority stay with this module's runtime owners and the
+[binding contract](../../../../api/server/lib/source-control/DOCUMENTATION.md).
+
+`lib/api/types.ts` takes the shared Git read shapes from
+`@openchamber/contracts/git` and extends them for the shared UI:
+`GitStatus` adds the optional `aheadBase`, `upstreamComparison` and
+`attentionReason`, `GitBranch` adds `defaultBranches`, and `GitWorktreeInfo`
+adds `provenance`. The web server and the VS Code extension host answer the
+narrower shared base, so those fields stay optional and an absent value means
+the runtime did not report it. VS Code-specific worktree state
+(`directoryCreated`, `bootstrapStatus`, `sourceFetchFailed`) and its raw
+`GitRemote` and `sshCommand` identity stay with the extension host, not here.
+
 ## Anonymous transport
 
 Anonymous HTTPS is a transport an identity may carry; identity pickers label it read-only in every locale, without a repeated confirmation modal, and disable it for SSH remotes. A clone URL change re-proposes the identity for the new host. Publish destinations label and disable anonymous grants, and shared request builders reject anonymous push, sync publication and remote deletion before calling the planner. Shared binding and network parsers retain the anonymous tag, never a verified actor or System marker. The connected OpenChamber server remains the authorization owner; clone still reports retained-checkout binding failure as finish-setup rather than success.
