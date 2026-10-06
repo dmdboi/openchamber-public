@@ -12,6 +12,7 @@
  * directory never invalidates a reference.
  */
 
+import { asNonEmptyString, isRecord as isObjectRecord } from '../shared/guards.js';
 import { projectConfigFileStemOf } from '../projects/project-id.js';
 
 const PROJECT_CONTEXT_VERSION = 2;
@@ -26,18 +27,10 @@ const PROJECT_PLAN_MAX_ITEMS = 500;
 const PROJECT_ID_PATTERN = /^[a-zA-Z0-9._:-]+$/;
 const PLAN_FILE_PATTERN = /^[a-zA-Z0-9._-]+\.md$/;
 
-const asNonEmptyString = (value) => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
-
 const clampLength = (value, maxLength) => {
   if (typeof value !== 'string') return '';
   return value.length > maxLength ? value.slice(0, maxLength) : value;
 };
-
-const isObjectRecord = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
 const NOTE_SOURCES = new Set(['manual', 'selection', 'agent']);
 

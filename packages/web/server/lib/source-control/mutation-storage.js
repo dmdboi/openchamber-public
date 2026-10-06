@@ -1,3 +1,4 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { createHash, randomUUID } from 'node:crypto';
@@ -18,10 +19,6 @@ const TARGET_OPTIONAL_KEYS = ['number', 'head', 'base', 'headSha'];
 const RESULT_KEYS = [...TARGET_OPTIONAL_KEYS, 'state', 'merged', 'ready', 'failureStatus', 'failureCode'];
 
 const emptyState = () => ({ version: VERSION, records: {} });
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
 const isBoolean = (value) => Object.prototype.toString.call(value) === '[object Boolean]';
 const isFunction = (value) => Object.prototype.toString.call(value) === '[object Function]';
 const isNonEmptyString = (value) => isString(value) && value.length > 0;

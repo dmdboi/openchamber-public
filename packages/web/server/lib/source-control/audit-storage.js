@@ -1,3 +1,4 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -26,10 +27,6 @@ const RESULT_STEPS = new Set([
 ]);
 
 const emptyState = () => ({ version: VERSION, records: {} });
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
 const hasExactKeys = (value, required, optional = []) => {
   const keys = Object.keys(value);
   return required.every((key) => keys.includes(key))

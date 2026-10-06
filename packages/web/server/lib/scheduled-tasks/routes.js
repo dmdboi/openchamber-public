@@ -1,11 +1,5 @@
+import { asNonEmptyString } from '../shared/guards.js';
 import { randomUUID } from 'node:crypto';
-const asNonEmptyString = (value) => {
-  if (typeof value !== 'string') {
-    return null;
-  }
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
 
 const parseProjectID = (req) => asNonEmptyString(req?.params?.projectId);
 const parseTaskID = (req) => asNonEmptyString(req?.params?.taskId);

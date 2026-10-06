@@ -1,13 +1,8 @@
+import { asNonEmptyString } from '../shared/guards.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { OpenChamberControlError } from '../openchamber-control/error.js';
 import { loopFingerprint, parseLoopDefinition, setLoopFileEnabled } from './loops.js';
-
-const asNonEmptyString = (value) => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
 
 export const createScheduledTaskService = (dependencies) => {
   const {

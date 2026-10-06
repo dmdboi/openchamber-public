@@ -1,3 +1,4 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
@@ -18,10 +19,6 @@ const DEFAULT_GITHUB_CLIENT_ID = 'Ov23lizomPOC3eFYo56r';
 const DEFAULT_GITHUB_SCOPES = 'repo read:org workflow read:user user:email';
 export const GH_CLI_ACCOUNT_ID = 'gh-cli';
 
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
 const exactKeys = (value, required, optional = []) => {
   const allowed = new Set([...required, ...optional]);
   return required.every((key) => Object.hasOwn(value, key))

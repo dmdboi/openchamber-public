@@ -1,3 +1,4 @@
+import { asNonEmptyString } from '../shared/guards.js';
 import path from 'node:path';
 import { OpenCode } from '@opencode/client';
 import { OpenChamberControlError, asControlError } from './error.js';
@@ -14,12 +15,6 @@ const SCHEDULE_TASK_ID_ACTIONS = new Set([
   'schedule.delete',
   'schedule.toggle',
 ]);
-
-const asNonEmptyString = (value) => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-};
 
 const positiveInteger = (value, fallback, field) => {
   if (value === undefined || value === null) return fallback;
@@ -487,7 +482,6 @@ export const createOpenChamberControlService = (dependencies) => {
       }
       parameters.url = parsed.toString();
     }
-
 
     if (action === 'browser.click') {
       const selector = asNonEmptyString(input.selector);

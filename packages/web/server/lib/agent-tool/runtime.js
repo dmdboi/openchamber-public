@@ -1,3 +1,4 @@
+import { asNonEmptyString } from '../shared/guards.js';
 import {
   OPENCHAMBER_AGENT_TOOL_ACTION_DEFINITIONS,
   OPENCHAMBER_AGENT_TOOL_ACTIONS,
@@ -168,12 +169,6 @@ const agentOnlyUsageError = (action, input) => {
     return 'lastAssistant belongs to session.messages. To get a dispatched session\'s answer when it finishes, set returnResult';
   }
   return null;
-};
-
-const asNonEmptyString = (value) => {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
 };
 
 const createResult = ({ ok, action, data, error, exitCode }) => ({

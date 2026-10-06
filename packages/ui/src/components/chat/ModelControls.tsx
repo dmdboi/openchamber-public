@@ -29,6 +29,7 @@ import { useAgentColors } from '@/hooks/useAgentColors';
 import { useDeviceInfo } from '@/lib/device';
 import { mergeModelMetadataWithLiveModel } from '@/lib/modelMetadata';
 import { getModelDisplayName as getSharedModelDisplayName } from '@/lib/modelDisplay';
+import { formatCompactNumber } from '@/lib/numberFormat';
 import { getEditModeColors } from '@/lib/permissions/editModeColors';
 import { cn } from '@/lib/utils';
 import { agentLabel } from '@/lib/agentLabel';
@@ -194,13 +195,6 @@ const getModalityIcons = (metadata: ModelMetadata | undefined, direction: 'input
     }
     return result;
 };
-
-const formatCompactNumber = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
-    notation: 'compact',
-    compactDisplay: 'short',
-    maximumFractionDigits: 1,
-    minimumFractionDigits: 0,
-}).format(value);
 
 const formatUsdCurrency = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
     style: 'currency',
