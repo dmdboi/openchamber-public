@@ -36,8 +36,10 @@ list.
 
 A staged test file runs with the runner its package uses, and only that file.
 
-- Web tests, including the `bun:test` files the web Vitest config maps to its
-  shim, run through `packages/web` and its Vitest config.
+- API, CLI and web tests, including the `bun:test` files their Vitest configs
+  map to a shim, run through `vitest run` in their own package: `packages/api`,
+  `packages/cli` or `packages/web`. Keep `VITEST_PACKAGES` in `pre-commit.mjs`
+  in step with the packages whose `test` script is `vitest run`.
 - Every other test file runs through `scripts/run-isolated-tests.mjs --files`,
   which picks Bun or Node from the file's imports and runs it from the nearest
   `package.json` directory. Each file keeps its own process.
