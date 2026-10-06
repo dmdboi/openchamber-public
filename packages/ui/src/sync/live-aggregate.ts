@@ -198,24 +198,3 @@ export function findLiveSession(states: Iterable<LiveStateSlice>, sessionID?: st
   return match
 }
 
-export function findLiveSessionStatus(
-  states: Iterable<LiveStateSlice>,
-  sessionID?: string | null,
-): SessionStatus | undefined {
-  if (!sessionID) {
-    return undefined
-  }
-
-  let match: StatusCandidate | undefined
-  for (const state of states) {
-    const next = getStatusCandidate(state, sessionID)
-    if (!next) {
-      continue
-    }
-    if (shouldReplaceStatusCandidate(match, next)) {
-      match = next
-    }
-  }
-
-  return match?.status
-}

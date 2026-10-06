@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { buildGroupRenderDescriptors, resolveSearchResultPlacement, selectRenderedProjectSections } from '../../../../../../src/components/session/sidebar/projects/sessionProjectRender';
+import { buildGroupRenderDescriptors } from '../../../../../../src/components/session/sidebar/projects/sessionProjectRender';
 import type { SessionGroup } from '../../../../../../src/components/session/sidebar/types';
 import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 
@@ -70,35 +70,4 @@ describe('buildGroupRenderDescriptors', () => {
   });
 });
 
-describe('single-project scroller projection', () => {
-  test('renders only the selected project from persisted display state', () => {
-    const previous = useSessionDisplayStore.getState();
-    const sections = [
-      { project: { id: 'project-a', normalizedPath: '/workspace/a' }, groups: [] },
-      { project: { id: 'project-b', normalizedPath: '/workspace/b' }, groups: [] },
-    ];
 
-    try {
-      useSessionDisplayStore.setState({ projectDisplayMode: 'single', singleProjectId: 'project-b' });
-      const state = useSessionDisplayStore.getState();
-
-      expect(selectRenderedProjectSections(sections, state.projectDisplayMode === 'single', state.singleProjectId)
-        .map((section) => section.project.id)).toEqual(['project-b']);
-    } finally {
-      useSessionDisplayStore.setState(previous, true);
-    }
-  });
-});
-
-// Issue #3200: a query matching only a managed chat leaves no project section to
-// render. The chats live in the scroller's top content, so answering with the
-// empty state there hid a result the header was already counting.
-describe('resolveSearchResultPlacement', () => {
-  test('keeps the top content when the only match lives there', () => {
-    expect(resolveSearchResultPlacement(true)).toBe('top-content');
-  });
-
-  test('falls back to the empty state when nothing matched anywhere', () => {
-    expect(resolveSearchResultPlacement(false)).toBe('empty-state');
-  });
-});

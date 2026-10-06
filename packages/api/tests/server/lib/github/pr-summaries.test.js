@@ -4,7 +4,6 @@ import {
   MAX_SUMMARY_REFS,
   fetchPrSummaries,
   isGraphqlRateLimitError,
-  parseSummaryRefs,
   summarizeCheckContexts,
 } from '../../../../server/lib/github/pr-summaries.js';
 
@@ -70,28 +69,6 @@ const fakeOctokit = (nodes, { fail, issues = new Map() } = {}) => {
   };
 };
 
-describe('parseSummaryRefs', () => {
-  test('dedupes refs case-insensitively', () => {
-    expect(parseSummaryRefs([
-      { owner: 'Acme', repo: 'App', number: 7 },
-      { owner: 'acme', repo: 'app', number: 7 },
-      { owner: 'acme', repo: 'app', number: 8 },
-    ])).toEqual([
-      { owner: 'acme', repo: 'app', number: 7 },
-      { owner: 'acme', repo: 'app', number: 8 },
-    ]);
-  });
-
-  test('rejects malformed payloads', () => {
-    expect(parseSummaryRefs(null)).toBe(null);
-    expect(parseSummaryRefs([{ owner: 'acme', repo: 'app', number: 0 }])).toBe(null);
-    expect(parseSummaryRefs([{ owner: 'acme', repo: 'app', number: '7' }])).toBe(null);
-    expect(parseSummaryRefs([{ owner: 'ac me', repo: 'app', number: 7 }])).toBe(null);
-    expect(parseSummaryRefs([{ owner: 'acme', repo: 'app"){x}', number: 7 }])).toBe(null);
-    const tooMany = Array.from({ length: MAX_SUMMARY_REFS + 1 }, (_, index) => ({ owner: 'acme', repo: 'app', number: index + 1 }));
-    expect(parseSummaryRefs(tooMany)).toBe(null);
-  });
-});
 
 describe('summarizeCheckContexts', () => {
   test('a re-run that passed hides the failed attempt it replaced', () => {

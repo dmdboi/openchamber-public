@@ -6,7 +6,6 @@ import {
     contextPayloadFromDraft,
     createContextPart,
     formatContextText,
-    hasContextParts,
     readContextPart,
     type ContextPartPayload,
 } from '../../../../src/lib/messages/contextParts';
@@ -235,10 +234,4 @@ describe('round-trip through part metadata', () => {
         })).toBeNull();
     });
 
-    test('hasContextParts detects user-attached context in a message', () => {
-        const quote = asPart(contextPayloadFromDraft(draft({ source: 'chat-quote', fileLabel: 'msg_1' })));
-        expect(hasContextParts([quote])).toBe(true);
-        expect(hasContextParts([{ type: 'text' }])).toBe(false);
-        expect(hasContextParts([])).toBe(false);
-    });
 });

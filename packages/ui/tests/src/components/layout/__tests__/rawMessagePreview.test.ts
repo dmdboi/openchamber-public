@@ -6,42 +6,10 @@ import {
   deriveUserSnippet,
   formatAssistantTokens,
   formatMessagePreviewTime,
-  truncateMessageId,
 } from '../../../../../src/components/layout/rawMessagePreview';
 
 const part = (data: Record<string, unknown>): Part => data as unknown as Part;
 
-describe('truncateMessageId', () => {
-  test('returns trailing 8 chars (suffix, not prefix)', () => {
-    // OpenCode ids share a long common prefix (msg_e39e98d…); the suffix is
-    // the only distinguishing region, so we surface the tail.
-    const id = 'msg_e39e98d86001xA2wMRcvRuL5HT';
-    expect(truncateMessageId(id)).toBe(id.slice(-8));
-  });
-
-  test('distinguishes two ids that differ only in suffix', () => {
-    const a = 'msg_e39e98d86001xA2wMRcvRuL5HT';
-    const b = 'msg_e39e98d0e001kmHn6dH5r3IHfs';
-    expect(truncateMessageId(a)).not.toBe(truncateMessageId(b));
-  });
-
-  test('returns last 8 chars when longer', () => {
-    expect(truncateMessageId('abcdefghij')).toBe('cdefghij');
-  });
-
-  test('returns id as-is when shorter than or equal to limit', () => {
-    expect(truncateMessageId('abc')).toBe('abc');
-    expect(truncateMessageId('12345678')).toBe('12345678');
-  });
-
-  test('handles empty string', () => {
-    expect(truncateMessageId('')).toBe('');
-  });
-
-  test('respects custom length', () => {
-    expect(truncateMessageId('abcdefghij', 4)).toBe('ghij');
-  });
-});
 
 describe('derivePartsLabel', () => {
   test('returns empty for no parts', () => {

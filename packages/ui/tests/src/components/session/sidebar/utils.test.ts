@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
   isPathWithinProject,
-  selectExpandedParentKeysForContext,
   toggleExpandedParentKey,
 } from '../../../../../src/components/session/sidebar/utils';
 
@@ -36,30 +35,6 @@ describe('isPathWithinProject', () => {
   });
 });
 
-describe('selectExpandedParentKeysForContext', () => {
-  test('keeps project and recent expansion state isolated', () => {
-    const expanded = new Set([
-      'project:active:parent-a',
-      'project:archived:parent-b',
-      'recent:active:parent-a',
-    ]);
-
-    expect(selectExpandedParentKeysForContext(new Set(), expanded, 'project')).toEqual(new Set([
-      'project:active:parent-a',
-      'project:archived:parent-b',
-    ]));
-    expect(selectExpandedParentKeysForContext(new Set(), expanded, 'recent')).toEqual(new Set([
-      'recent:active:parent-a',
-    ]));
-  });
-
-  test('preserves a context projection when only another context changes', () => {
-    const recent = new Set(['recent:active:parent-a']);
-    const expanded = new Set(['recent:active:parent-a', 'project:active:parent-a']);
-
-    expect(selectExpandedParentKeysForContext(recent, expanded, 'recent')).toBe(recent);
-  });
-});
 
 describe('parent expansion state', () => {
   const recentKey = 'recent:active:parent-a';
@@ -71,12 +46,4 @@ describe('parent expansion state', () => {
     expect(toggleExpandedParentKey(expanded, recentKey)).toEqual(new Set());
   });
 
-  test('does not change the other render context', () => {
-    const recentExpanded = new Set([recentKey]);
-    const bothExpanded = toggleExpandedParentKey(recentExpanded, projectKey);
-    const projectCollapsed = toggleExpandedParentKey(bothExpanded, projectKey);
-
-    expect(selectExpandedParentKeysForContext(new Set(), bothExpanded, 'recent')).toEqual(new Set([recentKey]));
-    expect(selectExpandedParentKeysForContext(new Set(), projectCollapsed, 'recent')).toEqual(new Set([recentKey]));
-  });
 });

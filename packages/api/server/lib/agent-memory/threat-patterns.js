@@ -56,6 +56,3 @@ export const findThreatPattern = (value) => {
   return match ? match.source.slice(0, 80) : null;
 };
 
-export const looksLikeInjection = (...values) => (
-  values.some((value) => findThreatPattern(value) !== null)
-);

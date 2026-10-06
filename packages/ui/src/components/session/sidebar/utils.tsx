@@ -6,18 +6,6 @@ import { formatMessage, useI18nStore } from '@/lib/i18n/store';
 import { normalizePath } from '@/lib/pathNormalization';
 export { normalizePath };
 
-export const selectExpandedParentKeysForContext = (
-  previous: Set<string>,
-  expanded: ReadonlySet<string>,
-  context: 'project' | 'recent',
-): Set<string> => {
-  const prefix = `${context}:`;
-  const next = new Set([...expanded].filter((key) => key.startsWith(prefix)));
-  if (previous.size === next.size && [...next].every((key) => previous.has(key))) {
-    return previous;
-  }
-  return next;
-};
 
 export const toggleExpandedParentKey = (
   expanded: Set<string>,

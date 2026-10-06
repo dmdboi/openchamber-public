@@ -3,7 +3,6 @@ import { describe, expect, test } from 'bun:test';
 import {
   DEFAULT_DESKTOP_WINDOW_CONTROLS_POSITION,
   getDesktopWindowControlsOrder,
-  normalizeDesktopWindowControlsPosition,
   resolveDesktopWindowControlsSide,
 } from '../../../src/lib/desktop';
 
@@ -15,12 +14,6 @@ describe('desktop window controls position', () => {
     expect(resolveDesktopWindowControlsSide('left')).toBe('left');
   });
 
-  test('maps legacy auto to right', () => {
-    expect(normalizeDesktopWindowControlsPosition('auto')).toBe('right');
-    expect(normalizeDesktopWindowControlsPosition('left')).toBe('left');
-    expect(normalizeDesktopWindowControlsPosition('right')).toBe('right');
-    expect(normalizeDesktopWindowControlsPosition('invalid')).toEqual(undefined);
-  });
 
   test('left uses macOS traffic-light order', () => {
     expect(getDesktopWindowControlsOrder('left')).toEqual(['close', 'minimize', 'maximize']);

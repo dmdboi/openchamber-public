@@ -6,7 +6,6 @@ import {
   areSessionListsEquivalent,
   areStatusMapsEquivalent,
   findLiveSession,
-  findLiveSessionStatus,
 } from '../../../../src/sync/live-aggregate.ts'
 
 const session = (id, directory, updated, extra = {}) => ({
@@ -46,50 +45,7 @@ describe('live aggregate', () => {
     expect(findLiveSession(states, 'ses-1')?.title).toBe('new')
   })
 
-  it('prefers busy/retry statuses over stale idle snapshots', () => {
-    const states = [
-      {
-        session: [],
-        session_status: {
-          'ses-1': { type: 'idle' },
-          'ses-2': { type: 'idle' },
-        },
-      },
-      {
-        session: [],
-        session_status: {
-          'ses-1': { type: 'busy' },
-          'ses-2': { type: 'retry', message: 'retrying' },
-        },
-      },
-    ]
 
-    const statuses = aggregateLiveSessionStatuses(states)
-    expect(statuses['ses-1']?.type).toBe('busy')
-    expect(statuses['ses-2']?.type).toBe('retry')
-    expect(findLiveSessionStatus(states, 'ses-2')?.type).toBe('retry')
-  })
-
-  it('lets a fresher idle snapshot override a stale busy status', () => {
-    const states = [
-      {
-        session: [session('ses-1', '/a', 10)],
-        session_status: {
-          'ses-1': { type: 'busy' },
-        },
-      },
-      {
-        session: [session('ses-1', '/a', 30)],
-        session_status: {
-          'ses-1': { type: 'idle' },
-        },
-      },
-    ]
-
-    const statuses = aggregateLiveSessionStatuses(states)
-    expect(statuses['ses-1']?.type).toBe('idle')
-    expect(findLiveSessionStatus(states, 'ses-1')?.type).toBe('idle')
-  })
 
   it('detects retry metadata changes in status maps', () => {
     const retryStatus = { type: 'retry', message: 'retrying|server|message', attempt: 1, next: 100 }

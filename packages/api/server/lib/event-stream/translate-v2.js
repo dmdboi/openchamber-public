@@ -335,11 +335,3 @@ export function translateWireEvent(payload) {
   }
 }
 
-/**
- * Convenience for consumers that hand one payload to one handler: translates
- * and forwards every resulting event in order.
- */
-export function forwardTranslatedWireEvent(payload, handle) {
-  if (typeof handle !== 'function') return;
-  for (const translated of translateWireEvent(payload)) handle(translated);
-}

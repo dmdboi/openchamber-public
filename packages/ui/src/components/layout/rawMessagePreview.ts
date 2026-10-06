@@ -55,14 +55,6 @@ export const derivePartsLabel = (parts: Part[]): string => {
   return seen.join(' + ');
 };
 
-/**
- * Returns the trailing `length` characters of a message id. Used because all
- * ids share the same long prefix and only the suffix is distinguishable.
- */
-export const truncateMessageId = (id: string, length: number = PREVIEW_ID_LENGTH): string => {
-  if (typeof id !== 'string') return '';
-  return id.length <= length ? id : id.slice(-length);
-};
 
 /**
  * Collapse whitespace runs into single spaces and trim ends. Keeps the

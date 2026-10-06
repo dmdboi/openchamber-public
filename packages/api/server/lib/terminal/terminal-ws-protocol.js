@@ -14,7 +14,6 @@ export const parseRequestPathname = (requestUrl) => {
   }
 };
 
-export const isTerminalWsPathname = (pathname) => pathname === TERMINAL_WS_PATH;
 
 export const normalizeTerminalWsMessageToBuffer = (rawData) => {
   if (Buffer.isBuffer(rawData)) {
@@ -28,13 +27,6 @@ export const normalizeTerminalWsMessageToBuffer = (rawData) => {
   return Buffer.from(rawData);
 };
 
-export const normalizeTerminalWsMessageToText = (rawData) => {
-  if (typeof rawData === 'string') {
-    return rawData;
-  }
-
-  return normalizeTerminalWsMessageToBuffer(rawData).toString('utf8');
-};
 
 export const readTerminalWsControlFrame = (rawData) => {
   if (!rawData) {
@@ -62,7 +54,4 @@ export const createTerminalWsControlFrame = (payload) => {
   return Buffer.concat([Buffer.from([TERMINAL_WS_CONTROL_TAG_JSON]), jsonBytes]);
 };
 
-export const pruneRebindTimestamps = (timestamps, now, windowMs) =>
-  timestamps.filter((timestamp) => now - timestamp < windowMs);
 
-export const isRebindRateLimited = (timestamps, maxPerWindow) => timestamps.length >= maxPerWindow;

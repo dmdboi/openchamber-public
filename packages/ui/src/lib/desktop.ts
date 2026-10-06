@@ -85,19 +85,6 @@ export const usesFramelessElectronChrome = (): boolean => {
   return platform === 'win32' || platform === 'linux';
 };
 
-/** Normalize a stored preference; legacy `auto` maps to the right-side default. */
-export const normalizeDesktopWindowControlsPosition = (
-  value: unknown,
-): DesktopWindowControlsPosition | undefined => {
-  if (value === 'left' || value === 'right') {
-    return value;
-  }
-  // Legacy "auto" never read OS chrome config; treat it as the right default.
-  if (value === 'auto') {
-    return DEFAULT_DESKTOP_WINDOW_CONTROLS_POSITION;
-  }
-  return undefined;
-};
 
 export const resolveDesktopWindowControlsSide = (
   preference: DesktopWindowControlsPosition | undefined,

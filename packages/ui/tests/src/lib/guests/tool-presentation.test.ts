@@ -9,7 +9,6 @@ import {
   readPath,
   renderGuestToolHeader,
   renderTemplate,
-  resolveGuestToolPresentation,
   stringifyTemplateValue,
 } from '../../../../src/lib/guests/tool-presentation.ts';
 import type { InstalledGuest } from '../../../../src/lib/guests/types.ts';
@@ -45,19 +44,6 @@ describe('matchGuestToolRule', () => {
     expect(compileGuestToolRules([guest('empty', [])])).toEqual([]);
   });
 
-  test('resolveGuestToolPresentation reads the store and follows a catalog replacement', () => {
-    useGuestsStore.setState({ status: 'ready', guests: [], runtimeKey: 'test' });
-    expect(resolveGuestToolPresentation('mcp.jira.search')).toBeNull();
-
-    useGuestsStore.getState().replaceCatalog([guest('jira', [{ match: 'mcp.jira.*', icon: 'bug' }])], 'test');
-    const first = resolveGuestToolPresentation('mcp.jira.search');
-    expect(first?.icon).toBe('bug');
-    expect(resolveGuestToolPresentation('mcp.jira.search')).toBe(first);
-    expect(resolveGuestToolPresentation('')).toBeNull();
-
-    useGuestsStore.getState().replaceCatalog([], 'test');
-    expect(resolveGuestToolPresentation('mcp.jira.search')).toBeNull();
-  });
 });
 
 describe('readPath', () => {

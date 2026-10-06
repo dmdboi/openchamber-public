@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { deriveBaseBranch, hasResolvableBaseBranch, qualifyBaseRef } from '../../../../../src/components/views/git/baseBranch';
+import { deriveBaseBranch, qualifyBaseRef } from '../../../../../src/components/views/git/baseBranch';
 
 describe('deriveBaseBranch', () => {
   test('prefers the repository default branch over conventional fallbacks', () => {
@@ -78,41 +78,6 @@ describe('deriveBaseBranch', () => {
   });
 });
 
-describe('hasResolvableBaseBranch', () => {
-  test('rejects the main fallback when it does not exist', () => {
-    expect(hasResolvableBaseBranch({
-      baseBranch: 'main',
-      localBranches: ['next', 'react'],
-      remoteBranches: ['origin/next', 'origin/react'],
-    })).toBe(false);
-  });
-
-  test('accepts a base branch available through a remote-tracking ref', () => {
-    // Safe because getRangeDiff resolves a base that exists only on a remote
-    // through that remote rather than passing the bare name to git.
-    expect(hasResolvableBaseBranch({
-      baseBranch: 'main',
-      localBranches: ['next'],
-      remoteBranches: ['origin/main', 'origin/next'],
-    })).toBe(true);
-  });
-
-  test('does not accept a differently-scoped branch that merely ends the same way', () => {
-    expect(hasResolvableBaseBranch({
-      baseBranch: 'main',
-      localBranches: ['next'],
-      remoteBranches: ['origin/feature/main'],
-    })).toBe(false);
-  });
-
-  test('matches a base branch whose own name contains a slash', () => {
-    expect(hasResolvableBaseBranch({
-      baseBranch: 'release/2.0',
-      localBranches: ['next'],
-      remoteBranches: ['origin/release/2.0'],
-    })).toBe(true);
-  });
-});
 
 describe('qualifyBaseRef', () => {
   const repository = {

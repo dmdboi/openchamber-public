@@ -58,79 +58,7 @@ export function getAttachedSessionDirectory(
   return null;
 }
 
-export function buildAttachmentFromCanonicalization(
-  canonical: WorktreeCanonicalizationResult,
-  options: SessionWorktreeCanonicalizationOptions = {},
-): SessionWorktreeAttachment {
-  const existingAttachment = options.existingAttachment ?? null;
-  const fallbackDirectory = options.fallbackDirectory ?? null;
-  const preferredDirectory = canonical.degraded
-    ? canonical.worktreeRoot ?? canonical.cwd ?? fallbackDirectory
-    : canonical.cwd ?? canonical.worktreeRoot ?? fallbackDirectory;
 
-  return {
-    worktreeRoot: canonical.worktreeRoot ?? fallbackDirectory,
-    cwd: preferredDirectory,
-    branch: canonical.branch ?? existingAttachment?.branch ?? null,
-    headState: canonical.headState,
-    worktreeStatus: canonical.worktreeStatus,
-    worktreeSource: options.worktreeSource ?? existingAttachment?.worktreeSource ?? null,
-    legacy: canonical.legacy,
-    degraded: canonical.degraded,
-    attentionReason: canonical.attentionReason ?? null,
-  };
-}
-
-export function resolveSessionWorktreeState(
-  input: ResolveSessionWorktreeStateInput
-): SessionWorktreeAttachment {
-  const { sessionDirectory, metadata, cwdExists = true, runtimeResolution } = input;
-
-  if (runtimeResolution) {
-    return {
-      worktreeRoot: runtimeResolution.worktreeRoot ?? metadata?.path ?? sessionDirectory ?? null,
-      cwd: runtimeResolution.cwd ?? sessionDirectory ?? metadata?.path ?? null,
-      branch: runtimeResolution.branch ?? metadata?.branch ?? null,
-      headState: runtimeResolution.headState ?? 'branch',
-      worktreeStatus: runtimeResolution.worktreeStatus ?? 'ready',
-      worktreeSource: runtimeResolution.worktreeSource ?? (metadata?.source === 'sdk' ? 'created-for-session' : 'existing'),
-      legacy: false,
-      degraded: runtimeResolution.degraded,
-      attentionReason: runtimeResolution.attentionReason ?? null,
-    };
-  }
-
-  if (!metadata) {
-    return {
-      worktreeRoot: sessionDirectory ?? null,
-      cwd: sessionDirectory ?? null,
-      branch: null,
-      headState: 'branch',
-      worktreeStatus: sessionDirectory ? 'invalid' : 'not-a-repo',
-      worktreeSource: null,
-      legacy: true,
-      degraded: true,
-      attentionReason: null,
-    };
-  }
-
-  const worktreeRoot = metadata.worktreeRoot ?? metadata.path;
-  const cwd = sessionDirectory ?? worktreeRoot;
-
-  const cwdValid = cwdExists && (cwd === worktreeRoot || isWithinWorktreeRoot(cwd, worktreeRoot));
-
-  return {
-    worktreeRoot,
-    cwd: cwdValid ? cwd : worktreeRoot,
-    branch: metadata.branch ?? null,
-    headState: metadata.headState ?? (metadata.branch ? 'branch' : 'detached'),
-    worktreeStatus: metadata.worktreeStatus ?? 'ready',
-    worktreeSource: metadata.source === 'sdk' ? 'created-for-session' : 'existing',
-    legacy: false,
-    degraded: !cwdValid,
-    attentionReason: null,
-  };
-}
 
 export function formatSessionWorktreeBadge(
   attachment: SessionWorktreeAttachment,

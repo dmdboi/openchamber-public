@@ -91,14 +91,6 @@ export const fitViewport = (
   return { width: size.width, height: size.height, scale };
 };
 
-/** Label for the current viewport, for the size control. */
-export const describeViewport = (viewport: BrowserViewport): string => {
-  if (viewport.kind === 'fill') return '';
-  if (viewport.kind === 'preset') {
-    return VIEWPORT_PRESETS.find((entry) => entry.id === viewport.id)?.label ?? '';
-  }
-  return '';
-};
 
 /**
  * The vocabulary the agent gets.

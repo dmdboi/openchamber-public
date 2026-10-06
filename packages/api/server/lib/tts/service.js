@@ -9,12 +9,6 @@ import { readOpenCodeCredentials } from '../opencode/auth.js';
 import { loadOpenAI } from './openai-sdk.js';
 import { normalizeCustomOpenAIBaseURL } from './base-url.js';
 
-// Voice options from OpenAI
-/** @public */
-export const TTS_VOICES = [
-  'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable',
-  'nova', 'onyx', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
-];
 
 async function getOpenAIApiKey() {
   // First check environment variable

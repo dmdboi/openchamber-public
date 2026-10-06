@@ -43,22 +43,6 @@ const getSessionNodeActivityState = (
   return state;
 };
 
-export const getSessionNodesActivityState = (
-  nodes: SessionNode[],
-  activeSessionIds: Set<string>,
-  unreadSessionIds: Set<string>,
-  includeUnreadSubtasks: boolean,
-): CollapsedActivityState => {
-  let state: CollapsedActivityState = null;
-  for (const node of nodes) {
-    state = mergeCollapsedActivityStates(
-      state,
-      getSessionNodeActivityState(node, activeSessionIds, unreadSessionIds, includeUnreadSubtasks),
-    );
-    if (state === 'active') return state;
-  }
-  return state;
-};
 
 type SessionActivityProps = {
   nodes: readonly SessionNode[];
