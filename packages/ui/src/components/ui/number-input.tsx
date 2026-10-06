@@ -121,7 +121,7 @@ const NumberInput = React.forwardRef<HTMLInputElement, NumberInputProps>(
     // Tracks the most recent user-committed snapshot so back-to-back clicks
     // within the same render cycle operate on the latest value, not the stale
     // `value` prop (which only updates after the parent re-renders in response
-    // to onValueChange). See packages/ui/src/components/ui/number-input.test.tsx.
+    // to onValueChange). See packages/ui/tests/src/components/ui/number-input.test.tsx.
     const committedValueRef = React.useRef<number>(baseValue)
 
     // Assumes a well-behaved controlled parent: when the parent updates the

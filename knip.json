@@ -20,12 +20,13 @@
     "packages/ui": {
       "entry": [
         "src/apps/renderVSCodeApp.tsx",
-        "src/**/*.bench.{ts,tsx}",
-        "src/**/*.{test,spec}.{js,cjs,mjs,jsx,ts,tsx}",
-        "src/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}"
+        "tests/**/*.bench.{ts,tsx}",
+        "tests/**/*.{test,spec}.{js,cjs,mjs,jsx,ts,tsx}",
+        "tests/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}"
       ],
       "project": [
-        "src/**/*.{ts,tsx}"
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
       ]
     },
     "packages/web": {

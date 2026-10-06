@@ -16,6 +16,7 @@ export default defineConfig({
       // lists that then fell behind the source.
       { find: '@openchamber/sdk/schemas', replacement: path.resolve(here, '../sdk/src/schemas.ts') },
       { find: '@openchamber/sdk', replacement: path.resolve(here, '../sdk/src/index.ts') },
+      { find: '@openchamber/ui/tests', replacement: path.resolve(here, '../ui/tests') },
       { find: '@openchamber/ui', replacement: path.resolve(here, '../ui/src') },
       { find: '@web', replacement: path.resolve(here, './src') },
       // Anchored to `@/` on purpose: a bare `@` prefix would also swallow
@@ -30,7 +31,7 @@ export default defineConfig({
     maxWorkers,
     // UI integration fixtures with Vite asset imports cannot execute in Bun's
     // raw TS loader. Keep them beside their UI owner and run them here.
-    include: [...configDefaults.include, '../ui/src/**/*.vitest.tsx'],
+    include: [...configDefaults.include, '../ui/tests/src/**/*.vitest.tsx'],
     // The Git suites drive a real `git` binary against temporary repositories.
     // Those subprocess round-trips routinely pass the 5s default, and which
     // cases exceed it shifts with machine load, so the default made a valid

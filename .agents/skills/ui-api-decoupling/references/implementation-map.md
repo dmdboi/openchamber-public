@@ -38,8 +38,8 @@ Review every cache keyed only by session ID, directory, URL, or entity ID. Add r
 
 ## Tests To Prefer
 
-- HTTP/request fidelity: `packages/ui/src/lib/runtime-fetch.test.ts`
-- URL/auth: `packages/ui/src/lib/runtime-url.test.ts`, `runtime-auth.test.ts`
+- HTTP/request fidelity: `packages/ui/tests/src/lib/runtime-fetch.test.ts`
+- URL/auth: `packages/ui/tests/src/lib/runtime-url.test.ts`, `runtime-auth.test.ts`
 - Server auth: `packages/web/tests/server/lib/ui-auth/ui-auth.test.js`
 - Generic proxy: `packages/web/tests/server/opencode-proxy.test.js`
 - Dev-server tunnel: `packages/web/tests/server/lib/dev-tunnel/tunnel.test.js`
