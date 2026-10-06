@@ -1,7 +1,16 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import type { AuthSessionState } from '@/lib/runtime-auth-expiry';
 
-type ComponentFn<P extends Record<string, unknown> = Record<string, unknown>> = (props: P) => unknown;
+type TestNode = ElementNode | TestNode[] | string | number | boolean | null | undefined;
+type Component<Props extends object = Record<string, never>> = (props: Props) => TestNode;
+type ElementProps = {
+  children?: TestNode;
+  onChange?: (event: { target: { value: string } }) => void;
+  onSubmit?: (event: { preventDefault: () => void }) => void | Promise<void>;
+};
+type ElementNode = { type: string | symbol; props: ElementProps };
+type GateProps = { children?: TestNode };
+type DesktopInvokeResult = { token?: string; status?: number };
 
 type HookRecord = {
   values: unknown[];
@@ -9,9 +18,6 @@ type HookRecord = {
 };
 
 type HookEffect = () => void | (() => void);
-type HookCallback = (...args: unknown[]) => unknown;
-type JSXProps = Record<string, unknown> & { children?: unknown };
-type JSXElementType<P extends Record<string, unknown> = Record<string, unknown>> = ComponentFn<P> | string | symbol;
 
 const hookRecords = new Map<unknown, HookRecord>();
 let currentRecord: HookRecord | null = null;
@@ -74,14 +80,6 @@ const shallowEqualDeps = (left?: unknown[], right?: unknown[]): boolean => {
   return left.every((value, index) => Object.is(value, right[index]));
 };
 
-const getRecord = (component: unknown): HookRecord => {
-  const existing = hookRecords.get(component);
-  if (existing) return existing;
-  const record: HookRecord = { values: [], deps: [] };
-  hookRecords.set(component, record);
-  return record;
-};
-
 const getHookRecord = (): HookRecord => {
   if (!currentRecord) {
     throw new Error('Hooks can only run during a render pass');
@@ -89,10 +87,15 @@ const getHookRecord = (): HookRecord => {
   return currentRecord;
 };
 
-const renderComponent = <P extends Record<string, unknown>>(component: ComponentFn<P>, props: P): unknown => {
+const renderComponent = <Props extends object>(component: Component<Props>, props: Props): TestNode => {
   const previousRecord = currentRecord;
   const previousHookIndex = hookIndex;
-  currentRecord = getRecord(component);
+  let record = hookRecords.get(component);
+  if (!record) {
+    record = { values: [], deps: [] };
+    hookRecords.set(component, record);
+  }
+  currentRecord = record;
   hookIndex = 0;
 
   try {
@@ -103,7 +106,7 @@ const renderComponent = <P extends Record<string, unknown>>(component: Component
   }
 };
 
-function useCallback<T extends HookCallback>(callback: T, deps?: unknown[]): T {
+function useCallback<Args extends never[], Result>(callback: (...args: Args) => Result, deps?: unknown[]): (...args: Args) => Result {
   const record = getHookRecord();
   const index = hookIndex++;
   const previousDeps = record.deps[index];
@@ -111,7 +114,8 @@ function useCallback<T extends HookCallback>(callback: T, deps?: unknown[]): T {
     record.values[index] = callback;
     record.deps[index] = deps;
   }
-  return record.values[index] as T;
+  // SAFETY: This hook slot is only ever written with the callback passed to this hook index.
+  return record.values[index] as (...args: Args) => Result;
 }
 
 function useEffect(effect: HookEffect, deps?: unknown[]): void {
@@ -126,7 +130,7 @@ function useEffect(effect: HookEffect, deps?: unknown[]): void {
   }
 }
 
-function useMemo<T>(factory: () => T, deps?: unknown[]): T {
+function useMemo<Value>(factory: () => Value, deps?: unknown[]): Value {
   const record = getHookRecord();
   const index = hookIndex++;
   const previousDeps = record.deps[index];
@@ -134,47 +138,52 @@ function useMemo<T>(factory: () => T, deps?: unknown[]): T {
     record.values[index] = factory();
     record.deps[index] = deps;
   }
-  return record.values[index] as T;
+  // SAFETY: This hook slot is only ever written with the value returned by this hook's factory.
+  return record.values[index] as Value;
 }
 
-function useRef<T>(initialValue: T): { current: T } {
+function useRef<Value>(initialValue: Value): { current: Value } {
   const record = getHookRecord();
   const index = hookIndex++;
   if (record.values[index] === undefined) {
     record.values[index] = { current: initialValue };
   }
-  return record.values[index] as { current: T };
+  // SAFETY: This hook slot is initialized once with a ref container and never reassigned.
+  return record.values[index] as { current: Value };
 }
 
-function useState<T>(initialValue: T | (() => T)): readonly [T, (next: T | ((prev: T) => T)) => void] {
+function useState<Value>(initialValue: Value | (() => Value)): [Value, (next: Value | ((prev: Value) => Value)) => void] {
   const record = getHookRecord();
   const index = hookIndex++;
   if (record.values[index] === undefined) {
-    record.values[index] = typeof initialValue === 'function'
-      ? (initialValue as () => T)()
-      : initialValue;
+    record.values[index] = initialValue instanceof Function ? initialValue() : initialValue;
   }
 
-  const setState = (next: T | ((prev: T) => T)) => {
-    record.values[index] = typeof next === 'function'
-      ? (next as (prev: T) => T)(record.values[index] as T)
-      : next;
-  };
-
-  return [record.values[index] as T, setState] as const;
+  return [
+    // SAFETY: This hook slot is initialized and subsequently written only with Value.
+    record.values[index] as Value,
+    (next) => {
+      // SAFETY: This hook slot contains Value, and Function values follow React's updater contract.
+      record.values[index] = next instanceof Function
+        ? (next as (prev: Value) => Value)(record.values[index] as Value)
+        : next;
+    },
+  ];
 }
 
-function jsx<P extends Record<string, unknown>>(type: JSXElementType<P>, props: JSXProps & P): unknown {
-  if (type === reactJsxRuntime.Fragment) {
+const fragment = Symbol('Fragment');
+
+const jsx = <Props extends object>(type: Component<Props> | string | symbol, props: Props & ElementProps): TestNode => {
+  if (type === fragment) {
     return props.children ?? null;
   }
 
-  if (typeof type === 'function') {
-    return renderComponent(type, props as P);
+  if (type instanceof Function) {
+    return renderComponent(type, props);
   }
 
   return { type, props };
-}
+};
 
 const ReactMock = {
   useCallback,
@@ -185,7 +194,7 @@ const ReactMock = {
 };
 
 const reactJsxRuntime = {
-  Fragment: Symbol('Fragment'),
+  Fragment: fragment,
   jsx,
   jsxs: jsx,
   jsxDEV: jsx,
@@ -201,7 +210,7 @@ let finishHomeResolution: () => void = () => undefined;
 let runtimeApiBaseUrl = '';
 let runtimeKey = 'local';
 let runtimeEndpointChangedListener: (() => void) | null = null;
-let desktopInvoke: () => Promise<unknown> = async () => null;
+let desktopInvoke: () => Promise<DesktopInvokeResult | null> = async () => null;
 let desktopHostsGetCalls = 0;
 let desktopHostsSetCalls = 0;
 let runtimeSwitchCalls = 0;
@@ -220,7 +229,7 @@ mock.module('@simplewebauthn/browser', () => ({
 }));
 
 mock.module('@/components/ui/button', () => ({
-  Button: ({ children }: { children?: unknown }) => children ?? null,
+  Button: ({ children }: ElementProps) => children ?? null,
 }));
 
 mock.module('@/components/ui/checkbox', () => ({
@@ -228,7 +237,7 @@ mock.module('@/components/ui/checkbox', () => ({
 }));
 
 mock.module('@/components/ui/input', () => ({
-  Input: (props: JSXProps) => ({ type: 'input', props }),
+  Input: (props: ElementProps) => jsx('input', props),
 }));
 
 mock.module('@/components/ui', () => ({
@@ -350,12 +359,14 @@ const authSessionStore = {
 mock.module('@/lib/runtime-auth-expiry', () => ({
   installAuthSessionFocusWatch: mock(() => undefined),
   useAuthSessionStore: Object.assign(
-    (selector: (store: typeof authSessionStore) => unknown) => selector(authSessionStore),
+    <Value,>(selector: (store: typeof authSessionStore) => Value) => selector(authSessionStore),
     { getState: () => authSessionStore },
   ),
 }));
 
 const { SessionAuthGate } = await import('../../../../src/components/auth/SessionAuthGate');
+// SAFETY: SessionAuthGate renders through the mocked JSX runtime above, so its React output is a TestNode tree.
+const SessionAuthGateHarness = SessionAuthGate as Component<GateProps>;
 
 const flushEffects = async () => {
   while (pendingEffects.length > 0) {
@@ -371,38 +382,33 @@ const flushEffects = async () => {
   await Promise.resolve();
 };
 
-const renderGate = async () => {
-  const firstPass = renderComponent(SessionAuthGate, { children: 'child' });
+const renderGate = async (): Promise<TestNode> => {
+  const firstPass = renderComponent(SessionAuthGateHarness, { children: 'child' });
   await flushEffects();
-  const secondPass = renderComponent(SessionAuthGate, { children: 'child' });
+  const secondPass = renderComponent(SessionAuthGateHarness, { children: 'child' });
   await flushEffects();
   return secondPass ?? firstPass;
 };
 
-const collectText = (node: unknown): string => {
-  if (node === null || node === undefined || typeof node === 'boolean') return '';
-  if (typeof node === 'string' || typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map((child) => collectText(child)).join(' ');
-  if (typeof node === 'object') {
-    const element = node as { props?: { children?: unknown } };
-    return collectText(element.props?.children);
-  }
-  return '';
+const collectText = (node: TestNode): string => {
+  if (node == null || node === true || node === false) return '';
+  if (Array.isArray(node)) return node.map(collectText).join(' ');
+  if (node instanceof Object) return collectText(node.props.children);
+  return String(node);
 };
 
-const findElement = (node: unknown, type: string): { type: string; props: JSXProps } | null => {
-  if (!node || typeof node !== 'object') return null;
-  const element = node as { type?: unknown; props?: JSXProps };
-  if (element.type === type && element.props) return { type, props: element.props };
-  const children = element.props?.children;
-  if (Array.isArray(children)) {
-    for (const child of children) {
+const findElement = (node: TestNode, type: string): ElementNode | null => {
+  if (node == null || node === true || node === false) return null;
+  if (Array.isArray(node)) {
+    for (const child of node) {
       const match = findElement(child, type);
       if (match) return match;
     }
     return null;
   }
-  return findElement(children, type);
+  if (!(node instanceof Object)) return null;
+  if (node.type === type) return node;
+  return findElement(node.props.children, type);
 };
 
 describe('SessionAuthGate status-check failure behavior', () => {
@@ -480,7 +486,7 @@ describe('SessionAuthGate status-check failure behavior', () => {
     await renderGate();
     // The harness fires timers at once, so the wait has already run out.
     await flushEffects();
-    expect(collectText(renderComponent(SessionAuthGate, { children: 'child' }))).toContain('child');
+    expect(collectText(renderComponent(SessionAuthGateHarness, { children: 'child' }))).toContain('child');
     expect(ensureHomeCalls).toBe(1);
   });
 
@@ -501,7 +507,7 @@ describe('SessionAuthGate status-check failure behavior', () => {
     runtimeFetchRejects = false;
     runtimeApiBaseUrl = 'https://host-a.example';
     runtimeKey = 'host:a';
-    let resolveLogin: (value: unknown) => void = () => {
+    let resolveLogin: (value: DesktopInvokeResult) => void = () => {
       throw new Error('Password login did not start');
     };
     desktopInvoke = () => new Promise((resolve) => { resolveLogin = resolve; });
@@ -509,12 +515,14 @@ describe('SessionAuthGate status-check failure behavior', () => {
     const lockedTree = await renderGate();
     const input = findElement(lockedTree, 'input');
     expect(input).not.toBeNull();
-    (input?.props.onChange as (event: { target: { value: string } }) => void)({ target: { value: 'password-a' } });
+    if (!input) throw new Error('Password input not found');
+    input.props.onChange?.({ target: { value: 'password-a' } });
 
     const passwordTree = await renderGate();
     const form = findElement(passwordTree, 'form');
     expect(form).not.toBeNull();
-    const pending = (form?.props.onSubmit as (event: { preventDefault: () => void }) => Promise<void>)({ preventDefault: () => undefined });
+    if (!form) throw new Error('Password form not found');
+    const pending = form.props.onSubmit?.({ preventDefault: () => undefined });
     await Promise.resolve();
 
     runtimeApiBaseUrl = 'https://host-b.example';
