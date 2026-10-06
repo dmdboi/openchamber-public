@@ -5,7 +5,7 @@ import path from 'path';
 import crypto from 'crypto';
 
 import { createSettingsAccessors } from '../../../bin/lib/cli-settings-accessors.js';
-import { createRelayIdentityRuntime } from '../../../../api/server/lib/relay/identity.js';
+import { createRelayIdentityRuntime } from '@openchamber/api/server/lib/relay/identity.js';
 
 const withTempDir = async (fn) => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-settings-accessors-'));

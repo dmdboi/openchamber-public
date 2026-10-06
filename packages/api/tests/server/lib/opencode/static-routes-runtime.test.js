@@ -10,7 +10,6 @@ const createRuntime = () => createStaticRoutesRuntime({
   fs: { existsSync: () => false },
   path: { join: (...parts) => parts.join('/'), resolve: (value) => value, sep: '/' },
   process: { env: {} },
-  __dirname: '/server',
   express,
   resolveProjectDirectory: () => '',
   buildOpenCodeUrl: () => '',
@@ -24,7 +23,6 @@ const createServingRuntime = (distPath) => createStaticRoutesRuntime({
   fs,
   path,
   process: { env: { OPENCHAMBER_DIST_DIR: distPath } },
-  __dirname: '/server',
   express,
   resolveProjectDirectory: () => '',
   buildOpenCodeUrl: () => '',
@@ -75,13 +73,12 @@ describe('static file caching', () => {
 });
 
 describe('static routes runtime', () => {
-  it('serves the sibling web package assets by default', () => {
-    let resolvedDistPath;
+  it('does not look for the UI build when the caller names no dist directory', async () => {
+    const probed = [];
     const runtime = createStaticRoutesRuntime({
-      fs: { existsSync: (value) => { resolvedDistPath = value; return false; } },
+      fs: { existsSync: (value) => { probed.push(value); return true; } },
       path,
       process: { env: {} },
-      __dirname: '/repo/node_modules/@openchamber/api/server',
       express,
       resolveProjectDirectory: () => '',
       buildOpenCodeUrl: () => '',
@@ -90,10 +87,13 @@ describe('static routes runtime', () => {
       normalizePwaAppName: (value) => value,
       normalizePwaOrientation: (value) => value,
     });
+    const app = express();
+    runtime.registerStaticRoutes(app);
 
-    runtime.registerStaticRoutes(express());
+    const response = await request(app).get('/sessions');
 
-    expect(resolvedDistPath).toBe('/repo/node_modules/@openchamber/web/dist');
+    expect(probed).toEqual([]);
+    expect(response.status).toBe(404);
   });
 
   it('returns API-only HTML fallback for browser UI routes', async () => {

@@ -21,7 +21,6 @@
     "@gitbeaker/rest": "43.8.0",
     "@octokit/rest": "^22.0.1",
     "@openchamber/sdk": "workspace:*",
-    "@openchamber/web": "workspace:*",
     "@opencode/client": "2.0.23",
     "@opencode/schema": "2.0.23",
     "@simplewebauthn/server": "13.3.3",

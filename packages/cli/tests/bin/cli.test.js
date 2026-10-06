@@ -26,7 +26,7 @@ import { DEFAULT_TUNNEL_PROVIDER_CAPABILITIES } from '../../bin/lib/cli-tunnel-c
 import {
   TUNNEL_PROVIDER_CLOUDFLARE,
   TUNNEL_PROVIDER_NGROK,
-} from '../../../api/server/lib/tunnels/types.js';
+} from '@openchamber/api/server/lib/tunnels/types.js';
 import {
   assertAuthenticatedNetworkExposure,
   commands,

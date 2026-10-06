@@ -1,5 +1,5 @@
-import { cloudflareTunnelProviderCapabilities } from '../../../api/server/lib/tunnels/providers/cloudflare.js';
-import { ngrokTunnelProviderCapabilities } from '../../../api/server/lib/tunnels/providers/ngrok.js';
+import { cloudflareTunnelProviderCapabilities } from '@openchamber/api/server/lib/tunnels/providers/cloudflare.js';
+import { ngrokTunnelProviderCapabilities } from '@openchamber/api/server/lib/tunnels/providers/ngrok.js';
 
 const DEFAULT_TUNNEL_PROVIDER_CAPABILITIES = [
   cloudflareTunnelProviderCapabilities,

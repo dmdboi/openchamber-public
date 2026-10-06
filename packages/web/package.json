@@ -8,8 +8,8 @@
   },
   "scripts": {
     "dev": "bun run build:watch",
-    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} OPENCHAMBER_ALLOW_DEV_ORIGINS=1 bun --cwd ../api server/index.js --port ${OPENCHAMBER_PORT:-3001}",
-    "dev:server:watch": "bun ../../scripts/build-builtin-extensions.mjs && node ../api/scripts/dev-server-watch.mjs",
+    "dev:server": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_DIST_DIR=${OPENCHAMBER_DIST_DIR:-../web/dist} OPENCHAMBER_RELAY_HOST=${OPENCHAMBER_RELAY_HOST:-off} OPENCHAMBER_ALLOW_DEV_ORIGINS=1 bun --cwd ../api server/index.js --port ${OPENCHAMBER_PORT:-3001}",
+    "dev:server:watch": "bun ../../scripts/build-builtin-extensions.mjs && OPENCHAMBER_DIST_DIR=${OPENCHAMBER_DIST_DIR:-../web/dist} node ../api/scripts/dev-server-watch.mjs",
     "build": "NODE_OPTIONS=--max-old-space-size=6144 vite build",
     "build:watch": "vite build --watch",
     "type-check": "tsc --noEmit",

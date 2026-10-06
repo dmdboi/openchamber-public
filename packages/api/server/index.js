@@ -1267,7 +1267,6 @@ const staticRoutesRuntime = createStaticRoutesRuntime({
   fs,
   path,
   process,
-  __dirname,
   express,
   resolveProjectDirectory,
   buildOpenCodeUrl,

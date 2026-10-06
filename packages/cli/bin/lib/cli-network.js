@@ -6,7 +6,7 @@ import {
   getUnauthenticatedLanErrorMessage,
   isNetworkExposedBindHost,
   isUnsafeUnauthenticatedLanAllowed,
-} from '../../../api/server/lib/security/bind-host.js';
+} from '@openchamber/api/server/lib/security/bind-host.js';
 
 // Browser-unsafe ports (Fetch/Chromium restricted ports).
 const UNSAFE_BROWSER_PORTS = new Set([

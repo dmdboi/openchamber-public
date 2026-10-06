@@ -9,7 +9,7 @@ import { ensureLogsDir, getLogFilePath } from './cli-paths.js';
 import { rotateLogFile } from './cli-log-files.js';
 import { discoverOpenChamberInstanceOnPort, isDesktopRuntimeForPort } from './cli-lifecycle.js';
 import { getPidFilePath, getInstanceFilePath, writePidFile, writeInstanceOptions, removePidFile, removeInstanceFile, isProcessRunning, terminateProcessTree } from './cli-process.js';
-import { isNetworkExposedBindHost } from '../../../api/server/lib/security/bind-host.js';
+import { isNetworkExposedBindHost } from '@openchamber/api/server/lib/security/bind-host.js';
 import {
   intro as clackIntro,
   outro as clackOutro,
@@ -25,6 +25,7 @@ const DAEMON_READY_TIMEOUT_MS = 30000;
 
 function createServeCommand({
   serverPath,
+  webDistDir,
   bunBin,
   checkOpenCodeCLI,
   getPreferredServerRuntime,
@@ -32,6 +33,9 @@ function createServeCommand({
   setForegroundShutdown,
 }) {
 async function serveCommand(options) {
+    // An explicit OPENCHAMBER_DIST_DIR (a custom UI build) wins over the
+    // installed @openchamber/web build.
+    const distDir = process.env.OPENCHAMBER_DIST_DIR?.trim() || webDistDir;
     const showOutput = shouldRenderHumanOutput(options);
     const jsonMessages = [];
     const emitNotice = (notice) => {
@@ -163,6 +167,7 @@ async function serveCommand(options) {
       }
       process.env.OPENCHAMBER_HOST = effectiveHost;
       process.env.OPENCHAMBER_RUNTIME = 'web';
+      process.env.OPENCHAMBER_DIST_DIR = distDir;
 
       // In --quiet mode, redirect stdout/stderr to the log file so that
       // server runtime output (console.log calls) does not pollute the
@@ -284,6 +289,7 @@ async function serveCommand(options) {
         ...process.env,
         OPENCHAMBER_PORT: String(targetPort),
         OPENCHAMBER_RUNTIME: 'web',
+        OPENCHAMBER_DIST_DIR: distDir,
         OPENCODE_BINARY: opencodeBinary,
         OPENCHAMBER_HOST: effectiveHost,
         ...(effectiveUiPassword ? { OPENCHAMBER_UI_PASSWORD: effectiveUiPassword } : {}),
