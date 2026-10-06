@@ -134,7 +134,7 @@ test('isWebVitestFile owns web tests and UI vitest files, including paths with s
   assert.equal(isWebVitestFile('packages/web/dir with space/a.test.ts'), true);
   assert.equal(isWebVitestFile('packages/ui/src/components/views/Thing.vitest.tsx'), true);
   assert.equal(isWebVitestFile('packages/ui/src/lib/a.test.ts'), false);
-  assert.equal(isWebVitestFile('packages/electron/updater-check.test.mjs'), false);
+  assert.equal(isWebVitestFile('packages/electron/tests/updater-check.test.mjs'), false);
   assert.equal(isWebVitestFile('scripts/bump-version.test.mjs'), false);
 });
 

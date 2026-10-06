@@ -43,7 +43,7 @@ Review every cache keyed only by session ID, directory, URL, or entity ID. Add r
 - Server auth: `packages/web/server/lib/ui-auth/ui-auth.test.js`
 - Generic proxy: `packages/web/server/opencode-proxy.test.js`
 - Dev-server tunnel: `packages/web/server/lib/dev-tunnel/tunnel.test.js`
-- VS Code bridge: `packages/vscode/webview/api/bridge.test.ts`
-- VS Code proxy: `packages/vscode/src/bridge-proxy-runtime.test.js`
+- VS Code bridge: `packages/vscode/tests/webview/api/bridge.test.ts`
+- VS Code proxy: `packages/vscode/tests/src/bridge-proxy-runtime.test.js`
 
-Also run focused tests beside new runtime implementations and validation required by each affected workspace.
+Also run the focused tests that cover a new runtime implementation, plus validation required by each affected workspace.

@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node", "electron"]
   },
-  "include": ["*.mjs", "*.cjs", "scripts/**/*.mjs", "scripts/**/*.cjs"]
+  "include": ["*.mjs", "*.cjs", "scripts/**/*.mjs", "scripts/**/*.cjs", "tests/**/*.mjs"]
 }

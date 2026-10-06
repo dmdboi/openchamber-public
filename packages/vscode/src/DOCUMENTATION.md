@@ -6,6 +6,8 @@ This document describes backend runtime modules used by the VS Code extension br
 
 Keep `bridge.ts` as a thin orchestration layer that delegates message handling to cohesive domain runtimes while preserving API behavior.
 
+Extension-host tests live in `tests/src/` and webview tests in `tests/webview/`, mirroring the `src/` and `webview/` layout.
+
 ## Runtime modules
 
 - `bridge.ts`
@@ -46,7 +48,7 @@ Keep `bridge.ts` as a thin orchestration layer that delegates message handling t
 
 - `gitService.ts`
   - Owns VS Code Git and worktree operations.
-  - `api:git/diff` and `api:git/file-diff` classify the status path first through `gitPathDiff.ts`, matching the web server's diff routes. The host answers `{ kind: 'diff' | 'file-diff', ..., submodule }` or `{ kind: 'unavailable', reason: 'path_not_found' | 'nested_repository', message }`, and `webview/api/git.ts` parses that into the shared contract, throwing `GitPathUnavailableError` for unavailable paths. A failing `git diff` rejects instead of returning an empty patch. These handlers are currently dead bridge surface (see below), so the contract is covered by `gitPathDiff.test.ts` and `webview/api/git.test.ts` rather than by a reachable screen.
+  - `api:git/diff` and `api:git/file-diff` classify the status path first through `gitPathDiff.ts`, matching the web server's diff routes. The host answers `{ kind: 'diff' | 'file-diff', ..., submodule }` or `{ kind: 'unavailable', reason: 'path_not_found' | 'nested_repository', message }`, and `webview/api/git.ts` parses that into the shared contract, throwing `GitPathUnavailableError` for unavailable paths. A failing `git diff` rejects instead of returning an empty patch. These handlers are currently dead bridge surface (see below), so the contract is covered by `gitPathDiff.test.ts` and `tests/webview/api/git.test.ts` rather than by a reachable screen.
   - Fetches the current tracked source branch once before worktree creation. Fetch failure falls back to the local branch and reports it to the shared UI.
   - Fast worktree creation reports bootstrap phases explicitly: `directory-created`, then `git-ready` after Git population/upstream work, and `setup-ready` after setup commands. Existing worktrees without tracked bootstrap state fall back to `ready`/`setup-ready`; shared webview consumers also accept legacy responses without `phase`.
   - Worktree removal waits for an active create/bootstrap task for the same directory so background Git and setup work cannot race deletion or restore stale bootstrap state. It then releases the removed worktree's OpenCode instance through the bridge-injected `disposeInstance` hook, after git confirms the linked worktree and before `git worktree remove`, while the path still resolves. Disposal is best-effort: failures (including an unavailable managed runtime or a timed-out request) are logged as a warning and never fail the removal. The primary workspace and the orphan fallback are never disposed.

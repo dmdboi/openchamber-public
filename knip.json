@@ -52,23 +52,24 @@
         "tray.mjs",
         "ssh-manager.mjs",
         "opencode-cwd.mjs",
-        "*.{test,spec}.{js,cjs,mjs}",
+        "tests/**/*.{test,spec}.{js,cjs,mjs}",
         "scripts/**/*.{js,cjs,mjs}"
       ],
       "project": [
         "*.{js,cjs,mjs}",
-        "scripts/**/*.{js,cjs,mjs}"
+        "scripts/**/*.{js,cjs,mjs}",
+        "tests/**/*.{js,cjs,mjs}"
       ]
     },
     "packages/vscode": {
       "entry": [
         "webview/main.tsx",
-        "src/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}",
-        "webview/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
       ],
       "project": [
         "src/**/*.{ts,tsx}",
-        "webview/**/*.{ts,tsx}"
+        "webview/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
       ]
     },
     "packages/sdk": {
@@ -76,12 +77,13 @@
         "src/index.ts",
         "src/ui/index.ts",
         "src/schemas.ts",
-        "src/**/*.{test,spec}.ts",
-        "scripts/**/*.{test,spec}.ts"
+        "tests/**/*.{test,spec}.{js,ts}",
+        "scripts/fixtures/guest-entry.ts"
       ],
       "project": [
         "src/**/*.ts",
-        "scripts/**/*.ts"
+        "scripts/**/*.ts",
+        "tests/**/*.{js,ts}"
       ]
     },
     "packages/mobile": {
