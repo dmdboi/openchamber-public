@@ -66,6 +66,7 @@ const LINT_SCOPES = [
   'packages/sdk/examples/',
   'packages/sdk/tests/',
   'packages/ui/src/',
+  'packages/ui/tests/',
   'packages/vscode/src/',
   'packages/vscode/webview/',
   'packages/vscode/tests/',
