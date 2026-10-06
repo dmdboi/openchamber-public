@@ -5,23 +5,43 @@
 // keys the settings registry marks `profile`, each with the time the store
 // last accepted a new value for it. Device keys never reach either file.
 //
-// The VS Code extension host writes the same two files with the same shape
-// (`packages/vscode/src/settings-files.ts`); keep the format changes in sync.
+// The VS Code extension host writes the same two files with the same shape:
+// `packages/vscode/src/settings-files.ts` re-exports this module, so both
+// runtimes share these rules.
 import { createRequire } from 'node:module';
+import nodePath from 'node:path';
 
-const registry = createRequire(import.meta.url)('./settings-registry.json');
+/**
+ * The generated registry fields, loaded once. The VS Code extension host
+ * bundles this module with esbuild, whose CommonJS output has no
+ * `import.meta.url` for `createRequire` to resolve, so its wrapper hands over
+ * the identical checked-in snapshot through `provideSettingsRegistryFields`
+ * before any accessor runs. The web server loads its own JSON on first use.
+ */
+let providedRegistryFields;
+const settingsRegistryFields = () => {
+  if (providedRegistryFields === undefined) {
+    providedRegistryFields = createRequire(import.meta.url)('./settings-registry.json').fields ?? {};
+  }
+  return providedRegistryFields;
+};
+
+/** Hand over the registry fields on the bundler path (see above). */
+export const provideSettingsRegistryFields = (fields) => {
+  providedRegistryFields = fields;
+};
 
 const PREFERENCES_FILE_NAME = 'preferences.json';
 const PREFERENCES_DOCUMENT_VERSION = 1;
 
 /** The registry scope for a key, or `null` when the registry does not know it. */
-const getSettingsScope = (key) => registry.fields[key]?.scope ?? null;
+const getSettingsScope = (key) => settingsRegistryFields()[key]?.scope ?? null;
 
 export const isProfileSettingsKey = (key) => getSettingsScope(key) === 'profile';
 export const isDeviceSettingsKey = (key) => getSettingsScope(key) === 'device';
 
 /** Profile keys the owner chose to store per surface kind (a change on a phone stays on phones). */
-const isPerSurfaceSettingsKey = (key) => registry.fields[key]?.perSurface === true;
+export const isPerSurfaceSettingsKey = (key) => settingsRegistryFields()[key]?.perSurface === true;
 
 const SETTINGS_SURFACES = Object.freeze(['web', 'desktop', 'vscode', 'mobile']);
 
@@ -39,7 +59,7 @@ export const settingsSurfaceOf = (req) => (
   normalizeSettingsSurface(req.query?.surface) ?? normalizeSettingsSurface(req.get?.('x-openchamber-surface'))
 );
 
-export const preferencesFilePathFor = (settingsFilePath, path) => path.join(path.dirname(settingsFilePath), PREFERENCES_FILE_NAME);
+export const preferencesFilePathFor = (settingsFilePath, pathModule = nodePath) => pathModule.join(pathModule.dirname(settingsFilePath), PREFERENCES_FILE_NAME);
 
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 

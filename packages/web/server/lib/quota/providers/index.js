@@ -269,3 +269,11 @@ export const fetchMinimaxCnCodingPlanQuota = minimaxCnCodingPlan.fetchQuota;
 export const fetchOllamaCloudQuota = ollamaCloud.fetchQuota;
 export const fetchWaferQuota = wafer.fetchQuota;
 export const fetchZhipuaiQuota = zhipuaiCodingPlan.fetchQuota;
+// Exposed so the VS Code extension host can re-export the same implementation
+// instead of duplicating it (see packages/vscode/src/quotaProviders.ts).
+export const fetchClinePassQuota = clinePass.fetchQuota;
+export const fetchNeuralwattQuota = neuralwatt.fetchQuota;
+export const fetchExeDevQuota = exeDev.fetchQuota;
+export const fetchOpenCodeGoQuota = opencodeGo.fetchQuota;
+export const fetchXaiQuota = xai.fetchQuota;
+export const fetchZenmuxQuota = zenmux.fetchQuota;

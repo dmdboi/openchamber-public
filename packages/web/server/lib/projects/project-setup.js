@@ -8,9 +8,9 @@
 //   a teammate who pulls the code gets the setup without configuring anything.
 //
 // This module knows both shapes and the one merge rule per field. The route
-// and the VS Code bridge (`packages/vscode/src/project-setup.ts`, a mirror of
-// this file) use the same code paths so a value reads back the same on every
-// surface.
+// and the VS Code bridge (`packages/vscode/src/project-setup.ts`, which
+// re-exports this module) use the same code paths so a value reads back the
+// same on every surface.
 
 import { isRecord as isObjectRecord } from '../shared/guards.js';
 import crypto from 'node:crypto';
@@ -24,6 +24,13 @@ const SETUP_COMMANDS_MAX = 50;
 
 const ACTION_PLATFORMS = new Set(['macos', 'linux', 'windows']);
 const SETUP_WORKTREE_MODES = new Set(['append', 'replace']);
+
+/**
+ * A wrongly shaped client patch. The VS Code bridge and the server route both
+ * treat these as user errors (400), so the type is shared rather than the
+ * message text.
+ */
+export class ProjectSetupValidationError extends Error {}
 
 const clamp = (value, maxLength) => (value.length > maxLength ? value.slice(0, maxLength) : value);
 
@@ -156,45 +163,45 @@ const sharedTrustOf = (value) => {
  */
 export const projectSetupPatchToStored = (patch) => {
   if (!isObjectRecord(patch)) {
-    throw new Error('patch must be an object');
+    throw new ProjectSetupValidationError('patch must be an object');
   }
   const stored = {};
   if ('setupWorktree' in patch) {
-    if (!Array.isArray(patch.setupWorktree)) throw new Error('setupWorktree must be an array of commands');
+    if (!Array.isArray(patch.setupWorktree)) throw new ProjectSetupValidationError('setupWorktree must be an array of commands');
     stored['setup-worktree'] = sanitizeSetupCommands(patch.setupWorktree);
   }
   if ('setupWorktreeWait' in patch) {
-    if (typeof patch.setupWorktreeWait !== 'boolean') throw new Error('setupWorktreeWait must be a boolean');
+    if (typeof patch.setupWorktreeWait !== 'boolean') throw new ProjectSetupValidationError('setupWorktreeWait must be a boolean');
     stored['setup-worktree-wait'] = patch.setupWorktreeWait;
   }
   if ('projectActions' in patch) {
-    if (!Array.isArray(patch.projectActions)) throw new Error('projectActions must be an array');
+    if (!Array.isArray(patch.projectActions)) throw new ProjectSetupValidationError('projectActions must be an array');
     stored.projectActions = sanitizeProjectActions(patch.projectActions);
   }
   if ('projectActionsPrimaryId' in patch) {
     const primary = patch.projectActionsPrimaryId;
-    if (primary !== null && typeof primary !== 'string') throw new Error('projectActionsPrimaryId must be a string or null');
+    if (primary !== null && typeof primary !== 'string') throw new ProjectSetupValidationError('projectActionsPrimaryId must be a string or null');
     stored.projectActionsPrimaryId = trimmedString(primary) || undefined;
   }
   if ('draftStarters' in patch) {
-    if (!Array.isArray(patch.draftStarters)) throw new Error('draftStarters must be an array');
+    if (!Array.isArray(patch.draftStarters)) throw new ProjectSetupValidationError('draftStarters must be an array');
     stored.draftStarters = sanitizeDraftStarters(patch.draftStarters);
   }
   if ('hiddenSharedActionIds' in patch) {
-    if (!Array.isArray(patch.hiddenSharedActionIds)) throw new Error('hiddenSharedActionIds must be an array');
+    if (!Array.isArray(patch.hiddenSharedActionIds)) throw new ProjectSetupValidationError('hiddenSharedActionIds must be an array');
     stored.hiddenSharedActionIds = sanitizeIdList(patch.hiddenSharedActionIds);
   }
   if ('setupWorktreeMode' in patch) {
-    if (!SETUP_WORKTREE_MODES.has(patch.setupWorktreeMode)) throw new Error('setupWorktreeMode must be "append" or "replace"');
+    if (!SETUP_WORKTREE_MODES.has(patch.setupWorktreeMode)) throw new ProjectSetupValidationError('setupWorktreeMode must be "append" or "replace"');
     stored.setupWorktreeMode = patch.setupWorktreeMode;
   }
   if ('sharedTrustHash' in patch) {
     const hash = patch.sharedTrustHash;
-    if (hash !== null && (typeof hash !== 'string' || !hash.trim())) throw new Error('sharedTrustHash must be a non-empty string or null');
+    if (hash !== null && (typeof hash !== 'string' || !hash.trim())) throw new ProjectSetupValidationError('sharedTrustHash must be a non-empty string or null');
     stored.sharedTrust = hash === null ? undefined : { hash: hash.trim(), trustedAt: Date.now() };
   }
   if ('projectPath' in patch) {
-    if (typeof patch.projectPath !== 'string') throw new Error('projectPath must be a string');
+    if (typeof patch.projectPath !== 'string') throw new ProjectSetupValidationError('projectPath must be a string');
     const projectPath = patch.projectPath.trim();
     if (projectPath) stored.projectPath = projectPath;
   }
@@ -370,22 +377,22 @@ export const serializeSharedProjectConfig = (config) => {
  * error, and a `plansDir` outside the repo is refused rather than stored.
  */
 export const applySharedProjectSetupPatch = (current, patch) => {
-  if (!isObjectRecord(patch)) throw new Error('patch must be an object');
+  if (!isObjectRecord(patch)) throw new ProjectSetupValidationError('patch must be an object');
   const next = { ...current };
   if ('setupWorktree' in patch) {
-    if (!Array.isArray(patch.setupWorktree)) throw new Error('setupWorktree must be an array of commands');
+    if (!Array.isArray(patch.setupWorktree)) throw new ProjectSetupValidationError('setupWorktree must be an array of commands');
     next.setupWorktree = sanitizeSetupCommands(patch.setupWorktree);
   }
   if ('setupWorktreeWait' in patch) {
-    if (patch.setupWorktreeWait !== null && typeof patch.setupWorktreeWait !== 'boolean') throw new Error('setupWorktreeWait must be a boolean or null');
+    if (patch.setupWorktreeWait !== null && typeof patch.setupWorktreeWait !== 'boolean') throw new ProjectSetupValidationError('setupWorktreeWait must be a boolean or null');
     next.setupWorktreeWait = patch.setupWorktreeWait;
   }
   if ('projectActions' in patch) {
-    if (!Array.isArray(patch.projectActions)) throw new Error('projectActions must be an array');
+    if (!Array.isArray(patch.projectActions)) throw new ProjectSetupValidationError('projectActions must be an array');
     next.projectActions = sanitizeProjectActions(patch.projectActions);
   }
   if ('draftStarters' in patch) {
-    if (!Array.isArray(patch.draftStarters)) throw new Error('draftStarters must be an array');
+    if (!Array.isArray(patch.draftStarters)) throw new ProjectSetupValidationError('draftStarters must be an array');
     next.draftStarters = sanitizeDraftStarters(patch.draftStarters);
   }
   if ('plansDir' in patch) {
@@ -393,7 +400,7 @@ export const applySharedProjectSetupPatch = (current, patch) => {
       next.plansDir = null;
     } else {
       const plansDir = normalizePlansDir(patch.plansDir);
-      if (!plansDir) throw new Error('plansDir must be a relative path inside the repository');
+      if (!plansDir) throw new ProjectSetupValidationError('plansDir must be a relative path inside the repository');
       next.plansDir = plansDir;
     }
   }
@@ -403,6 +410,7 @@ export const applySharedProjectSetupPatch = (current, patch) => {
 export const EMPTY_SHARED_PROJECT_CONFIG = EMPTY_SHARED;
 
 export const isProjectSetupValidationError = (error) => {
+  if (error instanceof ProjectSetupValidationError) return true;
   const message = error instanceof Error ? error.message : '';
   return message.includes('must be') || message.includes('is required') || message.includes('unsupported characters') || message.includes('not found');
 };
