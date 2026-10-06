@@ -63,6 +63,26 @@ and build output (`dist`, `dist-*`, built-in extensions), packaged desktop
 builds in `packages/electron/dist` included. Then run `bun install` again. Add
 `-- --dry-run` to see the list without deleting anything.
 
+## Git hooks
+
+The repository ships an optional pre-commit hook. It stays off until you opt in:
+
+```bash
+bun run hooks:install
+```
+
+That points `core.hooksPath` at the committed `.githooks/` directory for this
+clone. The hook checks only the files in your staged changeset, never a whole
+package: ESLint for TypeScript and TSX, syntax checks for JavaScript, JSON,
+shell and YAML, and the staged test files run with the runner their package
+uses. It does not run the anti-slop linter or a full package suite, so it stays
+quick. Run `bun run test` before opening a pull request.
+
+The hook uses the working-tree copy of each file, so a file with unstaged edits
+is checked and tested as it is on disk. Turn the hook off with
+`git config --unset core.hooksPath`. See `scripts/hooks/README.md` for the
+details.
+
 ## Dev Scripts
 
 Run commands from the project root unless a section says otherwise.

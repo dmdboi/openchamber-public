@@ -13,10 +13,17 @@
 //   instead of being listed here, so adding a test never requires editing a
 //   list that then rots.
 //
-// Usage: node scripts/run-isolated-tests.mjs <root> [...roots]
+// Usage:
+//   node scripts/run-isolated-tests.mjs <root> [...roots]
+//   node scripts/run-isolated-tests.mjs --files <file> [...files]
+//
+// `--files` runs exactly the listed files, which is how the pre-commit hook
+// tests only the staged test files. Each file keeps its own process, and its
+// working directory is the nearest package.json directory so Bun and Node read
+// the config a package script would. Directory mode is unchanged.
 
 import { spawn } from 'node:child_process';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { resolveBunExecutable } from './lib/bun-executable.mjs';
@@ -55,6 +62,19 @@ const resolveCommand = (file) => {
   return null;
 };
 
+// The package a test belongs to, found from its nearest package.json. Explicit
+// mode runs each file there so `bun test` and `node --test` resolve the same
+// directory a package script would.
+const packageRootFor = (file) => {
+  let directory = path.dirname(file);
+  while (true) {
+    if (existsSync(path.join(directory, 'package.json'))) return directory;
+    const parent = path.dirname(directory);
+    if (parent === directory) return path.dirname(file);
+    directory = parent;
+  }
+};
+
 // Only the tail of a file's output is kept for its failure report. A test that
 // logs in a loop otherwise grows the buffer past V8's string limit and takes
 // the whole run down with a RangeError that names no file.
@@ -64,8 +84,9 @@ const OUTPUT_TAIL_BYTES = 1024 * 1024;
 // takes about two minutes, so this leaves room for slower machines.
 const FILE_TIMEOUT_MS = 5 * 60 * 1000;
 
-const run = ({ command, args }) => new Promise((resolve) => {
+const run = ({ command, args, cwd }) => new Promise((resolve) => {
   const child = spawn(command, args, {
+    cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   });
@@ -110,20 +131,39 @@ const run = ({ command, args }) => new Promise((resolve) => {
   });
 });
 
-const roots = process.argv.slice(2);
-if (roots.length === 0) {
-  console.error('run-isolated-tests: expected at least one root directory');
-  process.exit(1);
-}
+const args = process.argv.slice(2);
+const filesFlag = args.indexOf('--files');
+const explicitMode = filesFlag !== -1;
+let files = [];
 
-const files = [];
-for (const root of roots) {
-  const resolved = path.resolve(root);
-  if (!statSync(resolved).isDirectory()) {
-    console.error(`run-isolated-tests: not a directory: ${root}`);
+if (explicitMode) {
+  const requested = args.slice(filesFlag + 1);
+  if (requested.length === 0) {
+    console.error('run-isolated-tests: --files expects at least one test file');
     process.exit(1);
   }
-  files.push(...collect(resolved));
+  for (const requestedFile of requested) {
+    const resolvedFile = path.resolve(requestedFile);
+    if (!existsSync(resolvedFile) || !statSync(resolvedFile).isFile()) {
+      console.error(`run-isolated-tests: not a file: ${requestedFile}`);
+      process.exit(1);
+    }
+    files.push(resolvedFile);
+  }
+} else {
+  if (args.length === 0) {
+    console.error('Usage: node scripts/run-isolated-tests.mjs <root> [...roots]');
+    console.error('       node scripts/run-isolated-tests.mjs --files <file> [...files]');
+    process.exit(1);
+  }
+  for (const root of args) {
+    const resolved = path.resolve(root);
+    if (!statSync(resolved).isDirectory()) {
+      console.error(`run-isolated-tests: not a directory: ${root}`);
+      process.exit(1);
+    }
+    files.push(...collect(resolved));
+  }
 }
 files.sort();
 
@@ -141,7 +181,10 @@ const worker = async () => {
       unknown.push(relative);
       continue;
     }
-    const { code, output, dropped, timedOut } = await run(resolved);
+    const { code, output, dropped, timedOut } = await run({
+      ...resolved,
+      cwd: explicitMode ? packageRootFor(file) : undefined,
+    });
     if (dropped > 0) console.error(`NOISY (${resolved.label}) ${relative}: ${dropped} characters of output dropped`);
     if (timedOut) {
       failures.push({ relative, label: resolved.label, output: `${output}\n[killed after ${FILE_TIMEOUT_MS / 1000}s]` });

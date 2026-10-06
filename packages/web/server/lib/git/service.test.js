@@ -54,7 +54,6 @@ import {
   revertFile,
   getUntrackedDiffs,
   getFileDiff,
-  commit,
   hasLocalIdentity,
   validateWorktreeCreate,
   parseBranchCreationSource,
@@ -2725,6 +2724,7 @@ describe('git remote arguments with option-like names', () => {
     addOptionLikeRemote(repository, remote);
     const head = runGit(repository, ['rev-parse', 'HEAD']).trim();
     runGit(repository, ['update-ref', `refs/remotes/${OPTION_LIKE_REMOTE}/gone`, head]);
+    runGit(repository, ['symbolic-ref', `refs/remotes/${OPTION_LIKE_REMOTE}/HEAD`, `refs/remotes/${OPTION_LIKE_REMOTE}/react`]);
 
     const branches = await getBranches(repository);
 
