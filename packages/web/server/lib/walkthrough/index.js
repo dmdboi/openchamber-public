@@ -166,6 +166,7 @@ export function isGenerating(repoRoot, sourceKeyValue, readContext) {
  * Resolve the pair the job registry is keyed by, for callers that need to look
  * a job up without doing any diff work.
  */
+/** @public */
 export async function getRepositoryRootFor(directory, rawSource, rawReadContext) {
   const source = parseSource(rawSource);
   const readContext = readContextForSource(source, rawReadContext);
@@ -640,5 +641,3 @@ async function runGeneration({ directory, source, repoRoot, key, force, explicit
     ...resolveAgainstCurrent(walkthrough, hunkIndex),
   }, readContext);
 }
-
-export { WalkthroughSourceError };

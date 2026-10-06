@@ -45,7 +45,7 @@ export type MagicPromptId =
   | 'session.fusion.instructions'
   | 'session.fusion.codeInstructions';
 
-export interface MagicPromptDefinition {
+interface MagicPromptDefinition {
   id: MagicPromptId;
   title: string;
   description: string;
@@ -54,7 +54,7 @@ export interface MagicPromptDefinition {
   placeholders?: Array<{ key: string; description: string }>;
 }
 
-export interface MagicPromptOverridesPayload {
+interface MagicPromptOverridesPayload {
   version: number;
   overrides: Record<string, string>;
 }

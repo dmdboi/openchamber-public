@@ -18,7 +18,7 @@ export const providerName = 'Kimi for Coding';
 // works at the api.kimi.com usage address, and a pre-split `kimi-for-coding`
 // key left behind with a dead credential must not shadow it. The global plan
 // stays last, as before, since its key is not known to work at that address.
-export const aliases = ['kimi-code-plan-cn', 'kimi-for-coding', 'kimi', 'kimi-code-plan-global'];
+const aliases = ['kimi-code-plan-cn', 'kimi-for-coding', 'kimi', 'kimi-code-plan-global'];
 
 // Kimi's weekly `usage` block reports `used`; its rate-limit `limits[].detail`
 // blocks report `remaining` instead. Neither field is guaranteed present, so

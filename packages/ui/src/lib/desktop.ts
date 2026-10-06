@@ -825,7 +825,7 @@ export type InstalledDesktopAppInfo = {
   iconDataUrl?: string | null;
 };
 
-export type FetchDesktopInstalledAppsResult = {
+type FetchDesktopInstalledAppsResult = {
   apps: InstalledDesktopAppInfo[];
   success: boolean;
   hasCache: boolean;

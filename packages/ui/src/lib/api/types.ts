@@ -388,7 +388,7 @@ export interface GitNetworkRedactedDestination {
   fingerprint: string;
 }
 
-export interface GitNetworkRuntimeIdentity {
+interface GitNetworkRuntimeIdentity {
   id: string;
   platform: RuntimePlatform;
   label?: string;
@@ -684,14 +684,14 @@ export type GitCheckoutHydrationStatus =
   | 'cancelled'
   | 'not-needed';
 
-export interface GitCheckoutHydrationItemResult {
+interface GitCheckoutHydrationItemResult {
   path: string;
   status: GitCheckoutHydrationStatus;
   endpoint?: GitNetworkRedactedEndpoint;
   error?: GitNetworkOperationError;
 }
 
-export interface GitCheckoutLfsResult {
+interface GitCheckoutLfsResult {
   path: string;
   status: GitCheckoutHydrationStatus;
   endpoint?: GitNetworkRedactedEndpoint;

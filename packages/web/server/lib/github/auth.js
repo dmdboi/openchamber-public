@@ -177,6 +177,7 @@ function publicCredential(credential, state) {
   };
 }
 
+/** @public Exposed to integration tests that dynamically import the auth module. */
 export function createGitHubAuthStore({ filePath, fsImpl = fs, lockWaitMs = 2_000 } = {}) {
   if (!validText(filePath)) throw new TypeError('GitHub auth file path is required');
   let transactions = Promise.resolve();

@@ -249,7 +249,7 @@ type NeuralwattPayload = {
   };
 };
 
-export type ProviderResult = {
+type ProviderResult = {
   providerId: string;
   providerName: string;
   ok: boolean;

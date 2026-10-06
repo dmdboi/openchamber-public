@@ -5,7 +5,7 @@ import {
   type ContextPanelMode,
 } from '@/lib/surfaces/modes';
 
-export type BuiltInContextSurfaceId =
+type BuiltInContextSurfaceId =
   | 'editor'
   | 'git'
   | 'pr'
