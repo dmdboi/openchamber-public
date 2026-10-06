@@ -38,7 +38,6 @@ describe('isPathWithinProject', () => {
 
 describe('parent expansion state', () => {
   const recentKey = 'recent:active:parent-a';
-  const projectKey = 'project:active:parent-a';
 
   test('manually expands and collapses a parent', () => {
     const expanded = toggleExpandedParentKey(new Set(), recentKey);

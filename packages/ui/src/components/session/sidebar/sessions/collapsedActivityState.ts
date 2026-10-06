@@ -1,4 +1,3 @@
-import type { Session } from '@/lib/opencode/model';
 import React from 'react';
 import type { SessionNode } from '../types';
 import { useGlobalSessionStatusStore } from '@/sync/global-session-status';
@@ -9,40 +8,6 @@ import { useNotificationStore } from '@/sync/notification-store';
 // Ordered by how much the user is needed: a blocked turn outranks a running
 // one, which outranks something merely unread.
 export type CollapsedActivityState = 'permission' | 'form' | 'active' | 'unread' | null;
-
-const mergeCollapsedActivityStates = (
-  current: CollapsedActivityState,
-  next: CollapsedActivityState,
-): CollapsedActivityState => {
-  if (current === 'active' || next === 'active') return 'active';
-  if (current === 'unread' || next === 'unread') return 'unread';
-  return null;
-};
-
-const getSessionNodeActivityState = (
-  node: SessionNode,
-  activeSessionIds: Set<string>,
-  unreadSessionIds: Set<string>,
-  includeUnreadSubtasks: boolean,
-): CollapsedActivityState => {
-  if (activeSessionIds.has(node.session.id)) return 'active';
-
-  let state: CollapsedActivityState = null;
-  // SAFETY: SessionNode sessions are SDK Session records; parentID is the optional hierarchy field.
-  const isSubtask = Boolean((node.session as Session & { parentID?: string | null }).parentID);
-  if (unreadSessionIds.has(node.session.id) && (includeUnreadSubtasks || !isSubtask)) state = 'unread';
-
-  for (const child of node.children) {
-    state = mergeCollapsedActivityStates(
-      state,
-      getSessionNodeActivityState(child, activeSessionIds, unreadSessionIds, includeUnreadSubtasks),
-    );
-    if (state === 'active') return state;
-  }
-
-  return state;
-};
-
 
 type SessionActivityProps = {
   nodes: readonly SessionNode[];

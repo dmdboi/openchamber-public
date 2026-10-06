@@ -7,10 +7,6 @@ import {
   switchRuntimeEndpoint,
 } from '../../../src/lib/runtime-switch';
 import { clearRuntimeUrlAuthToken, setRuntimeExtraHeaders } from '../../../src/lib/runtime-auth';
-import {
-  activateRelayTunnel,
-  deactivateRelayTunnel,
-} from '../../../src/lib/relay/runtime-tunnel';
 
 describe('runtime endpoint switching', () => {
 

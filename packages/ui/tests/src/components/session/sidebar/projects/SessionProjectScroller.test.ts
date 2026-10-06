@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { buildGroupRenderDescriptors } from '../../../../../../src/components/session/sidebar/projects/sessionProjectRender';
 import type { SessionGroup } from '../../../../../../src/components/session/sidebar/types';
-import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
 
 const makeGroup = (id: string, overrides: Partial<SessionGroup> = {}): SessionGroup => ({
   id,

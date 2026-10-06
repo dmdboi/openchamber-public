@@ -54,19 +54,6 @@ type StatusCandidate = {
   sessionUpdatedAt: number
 }
 
-const getStatusCandidate = (state: LiveStateSlice, sessionId: string): StatusCandidate | null => {
-  const status = state.session_status?.[sessionId]
-  if (!status) {
-    return null
-  }
-
-  const session = state.session.find((candidate) => candidate.id === sessionId)
-  return {
-    status,
-    sessionUpdatedAt: session ? getSessionUpdatedAt(session) : -1,
-  }
-}
-
 const shouldReplaceStatusCandidate = (current: StatusCandidate | undefined, next: StatusCandidate): boolean => {
   if (!current) {
     return true

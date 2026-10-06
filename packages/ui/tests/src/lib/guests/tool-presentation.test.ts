@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { GuestToolContribution } from '@openchamber/sdk';
 
-import { useGuestsStore } from '../../../../src/lib/guests/store.ts';
 import {
   compileGuestToolRules,
   guestToolTableRows,

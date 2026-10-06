@@ -15,8 +15,6 @@ import type { TimeFormatPreference } from '@/stores/useUIStore';
  * Helpers here are pure and DOM-free so they can be unit tested.
  */
 
-const PREVIEW_ID_LENGTH = 8;
-
 const partRecord = (part: Part): Record<string, unknown> => part as unknown as Record<string, unknown>;
 
 const partTypeOf = (part: Part): string => {

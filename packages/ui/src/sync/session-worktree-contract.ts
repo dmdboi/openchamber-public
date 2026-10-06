@@ -1,39 +1,7 @@
-import type { WorktreeMetadata } from '@/types/worktree';
 import type { SessionWorktreeAttachment } from '@/stores/types/sessionTypes';
 import { normalizePath as normalizePathImpl } from '@/lib/pathNormalization';
 
-type ResolveSessionWorktreeStateInput = {
-  sessionDirectory: string | null;
-  metadata: WorktreeMetadata | null;
-  cwdExists?: boolean;
-  runtimeResolution?: SessionWorktreeAttachment | null;
-};
-
-type WorktreeCanonicalizationResult = {
-  worktreeRoot: string | null;
-  cwd: string | null;
-  branch: string | null;
-  headState: 'branch' | 'detached' | 'unborn';
-  worktreeStatus: 'pending' | 'ready' | 'missing' | 'invalid' | 'not-a-repo';
-  legacy: boolean;
-  degraded: boolean;
-  attentionReason?: 'merge' | 'rebase' | 'cherry-pick' | 'revert' | 'bisect' | null;
-};
-
-type SessionWorktreeCanonicalizationOptions = {
-  existingAttachment?: SessionWorktreeAttachment | null;
-  fallbackDirectory?: string | null;
-  worktreeSource?: SessionWorktreeAttachment['worktreeSource'];
-};
-
 const normalizePath = (value: string | null | undefined): string => normalizePathImpl(value) ?? '';
-
-function isWithinWorktreeRoot(candidate: string | null, worktreeRoot: string | null): boolean {
-  if (!candidate || !worktreeRoot) return false;
-  const c = normalizePath(candidate);
-  const r = normalizePath(worktreeRoot);
-  return c === r || c.startsWith(r + '/');
-}
 
 export function getAttachedSessionDirectory(
   attachment: SessionWorktreeAttachment | null | undefined,
