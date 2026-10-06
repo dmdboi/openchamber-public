@@ -59,7 +59,6 @@ export type {
   GitRebaseInProgress,
   GitRemoteComparison,
   GitSubmoduleState,
-  GitWorktreeValidationError,
   GitWorktreeValidationResult,
 } from '@openchamber/contracts/git';
 

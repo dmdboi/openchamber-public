@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
-    "allowJs": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
@@ -18,6 +17,6 @@
       "@openchamber/contracts/git": ["../contracts/src/git.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/src/**/*.ts"],
+  "include": ["src/**/*", "tests/src/**/*"],
   "exclude": ["node_modules", "dist", "webview"]
 }
