@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022"],
+    "allowJs": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",
@@ -11,8 +12,12 @@
     "skipLibCheck": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "paths": {
+      "@openchamber/contracts": ["../contracts/src/index.ts"],
+      "@openchamber/contracts/git": ["../contracts/src/git.ts"]
+    }
   },
-  "include": ["src/**/*", "tests/src/**/*"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "tests/src/**/*.ts"],
   "exclude": ["node_modules", "dist", "webview"]
 }

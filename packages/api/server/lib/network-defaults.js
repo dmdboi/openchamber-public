@@ -11,8 +11,23 @@ import net from 'node:net';
 // fallback and ::1/localhost servers keep working; disabling it instead breaks
 // local MCP servers. Runtimes without the setter (Bun's fetch path, older Node)
 // are a no-op.
+/**
+ * Per-attempt connect timeout applied to Node's happy-eyeballs family
+ * autoselection, in milliseconds.
+ * @type {number}
+ */
 export const CONNECT_ATTEMPT_TIMEOUT_MS = 5_000;
 
+/**
+ * Raises Node's per-attempt connect timeout so distant provider endpoints can
+ * finish their TCP handshake. Address-family autoselection stays enabled, and
+ * runtimes without the setter are a no-op.
+ *
+ * @param {Partial<Pick<typeof net, 'setDefaultAutoSelectFamilyAttemptTimeout'>>} [netModule]
+ *   The `node:net` surface to configure; injectable for tests.
+ * @returns {boolean} `true` when the timeout was applied, `false` when the
+ *   runtime lacks the setter or the setter throws.
+ */
 export const applyConnectAttemptTimeout = (netModule = net) => {
   try {
     netModule.setDefaultAutoSelectFamilyAttemptTimeout(CONNECT_ATTEMPT_TIMEOUT_MS);
