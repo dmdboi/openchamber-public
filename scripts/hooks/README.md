@@ -12,12 +12,20 @@ the size of the commit rather than the size of the repository.
 
 | Staged file | Check |
 | --- | --- |
-| `.ts`, `.tsx` | ESLint with the repository config |
+| `.ts`, `.tsx` inside a package lint scope | ESLint with the repository config |
 | `.js`, `.mjs`, `.cjs` | `node --check` |
 | `.json` | `JSON.parse` |
-| `.sh`, `.bash` | `sh -n` or `bash -n`, chosen from the shebang |
+| `.jsonc`, `knip.json`, `tsconfig*.json`, `jsconfig*.json`, `.vscode/*.json` | the TypeScript JSONC parser, which accepts comments and trailing commas |
+| `.sh`, `.bash`, and files without an extension that start with a sh or bash shebang | `sh -n` or `bash -n`, chosen from the shebang |
 | `.yml`, `.yaml` | parsed with the `yaml` package |
 | `.test.*`, `.spec.*`, `*.vitest.tsx` | the package's test runner, see below |
+
+The lint scopes are the directories each package's `lint` script covers:
+`packages/sdk/{src,examples}`, `packages/ui/src`, `packages/vscode/{src,webview}`
+and `packages/web/src`. Electron lints nothing. TypeScript outside them, such as
+`tools/oxlint` or the root `vite.config.ts`, is not linted on commit, because CI
+does not lint it either. Keep `LINT_SCOPES` in `pre-commit.mjs` in step with
+those scripts.
 
 Files inside `node_modules`, `dist`, `dist-bundle`, `build`, `out`, `ios` and
 `android` are skipped, as are formats no check covers. A staged deletion is
@@ -46,12 +54,15 @@ backlog is handled as its own work.
 
 ## Partially staged files
 
-The hook uses the working-tree copy of each file, not the staged blob. For a
-file with both staged and unstaged changes that means lint sees the unstaged
-edits, and a staged test file runs against its working-tree bytes and
-working-tree source, so a broken unstaged edit can fail the commit. The hook
-prints those files when it sees them. Stage everything, or stash the unstaged
-part, when you want the checks to match exactly what you commit.
+Lint and syntax checks read a partially staged file from the index, so they
+check exactly what the commit contains. ESLint receives it through `--stdin`
+under its real path, and `node --check` receives it through stdin with the
+module type taken from the extension or the nearest `package.json`.
+
+Tests cannot run from the index: a test file imports other files from disk. A
+partially staged test file runs against its working-tree copy, and the hook
+lists those files. Stage everything, or stash the unstaged part, when you want
+the tests to match exactly what you commit.
 
 ## Install, force, uninstall
 

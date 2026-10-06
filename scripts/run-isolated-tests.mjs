@@ -132,12 +132,16 @@ const run = ({ command, args, cwd }) => new Promise((resolve) => {
 });
 
 const args = process.argv.slice(2);
-const filesFlag = args.indexOf('--files');
-const explicitMode = filesFlag !== -1;
+const explicitMode = args[0] === '--files';
 let files = [];
 
+if (!explicitMode && args.includes('--files')) {
+  console.error('run-isolated-tests: --files must be the first argument');
+  process.exit(1);
+}
+
 if (explicitMode) {
-  const requested = args.slice(filesFlag + 1);
+  const requested = args.slice(1);
   if (requested.length === 0) {
     console.error('run-isolated-tests: --files expects at least one test file');
     process.exit(1);

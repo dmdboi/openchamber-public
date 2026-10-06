@@ -4,8 +4,11 @@ import test from 'node:test';
 import {
   buildCheckPlan,
   classifyFile,
+  createContentReader,
   isTestFile,
+  isLintScoped,
   isWebVitestFile,
+  moduleTypeFor,
   parseStagedPaths,
   planTestRuns,
   readStagedPaths,
@@ -25,8 +28,8 @@ test('parseStagedPaths returns nothing for empty output', () => {
 });
 
 test('classifyFile routes each supported extension', () => {
-  assert.equal(classifyFile('src/a.ts'), 'eslint');
-  assert.equal(classifyFile('src/a.tsx'), 'eslint');
+  assert.equal(classifyFile('packages/ui/src/a.ts'), 'eslint');
+  assert.equal(classifyFile('packages/web/src/a.tsx'), 'eslint');
   assert.equal(classifyFile('src/a.js'), 'node-check');
   assert.equal(classifyFile('src/a.mjs'), 'node-check');
   assert.equal(classifyFile('src/a.cjs'), 'node-check');
@@ -35,6 +38,39 @@ test('classifyFile routes each supported extension', () => {
   assert.equal(classifyFile('scripts/run.bash'), 'shell');
   assert.equal(classifyFile('.github/workflows/ci.yml'), 'yaml');
   assert.equal(classifyFile('config/app.yaml'), 'yaml');
+});
+
+test('classifyFile lints TypeScript only inside a package lint scope', () => {
+  assert.equal(classifyFile('packages/sdk/examples/panel/index.ts'), 'eslint');
+  assert.equal(classifyFile('packages/vscode/webview/main.tsx'), 'eslint');
+  assert.equal(classifyFile('packages/electron/main.ts'), null);
+  assert.equal(classifyFile('tools/oxlint/rule.ts'), null);
+  assert.equal(classifyFile('vite.config.ts'), null);
+  assert.equal(isLintScoped('packages/ui/srcs/a.ts'), false);
+});
+
+test('classifyFile parses comment-tolerant JSON files as JSONC', () => {
+  assert.equal(classifyFile('knip.json'), 'jsonc');
+  assert.equal(classifyFile('packages/ui/tsconfig.json'), 'jsonc');
+  assert.equal(classifyFile('packages/vscode/tsconfig.webview.json'), 'jsonc');
+  assert.equal(classifyFile('.vscode/settings.json'), 'jsonc');
+  assert.equal(classifyFile('config/app.jsonc'), 'jsonc');
+  assert.equal(classifyFile('packages/ui/package.json'), 'json');
+  assert.equal(classifyFile('docs/not-knip.json'), 'json');
+});
+
+test('classifyFile treats an extensionless file as shell only with a sh or bash shebang', () => {
+  const firstLines = new Map([
+    ['.githooks/pre-commit', '#!/bin/sh'],
+    ['bin/tool', '#!/usr/bin/env bash'],
+    ['bin/cli', '#!/usr/bin/env node'],
+    ['LICENSE', 'MIT License'],
+  ]);
+  const readFirstLine = (filePath) => firstLines.get(filePath);
+  assert.equal(classifyFile('.githooks/pre-commit', readFirstLine), 'shell');
+  assert.equal(classifyFile('bin/tool', readFirstLine), 'shell');
+  assert.equal(classifyFile('bin/cli', readFirstLine), null);
+  assert.equal(classifyFile('LICENSE', readFirstLine), null);
 });
 
 test('classifyFile skips generated and vendored directories', () => {
@@ -52,17 +88,19 @@ test('classifyFile skips formats no check covers', () => {
 
 test('buildCheckPlan groups files by check and keeps them unchanged', () => {
   const plan = buildCheckPlan([
-    'src/a.ts',
-    'dir/with space/b.ts',
+    'packages/ui/src/a.ts',
+    'packages/ui/src/with space/b.ts',
     'src/c.js',
     'package.json',
+    'knip.json',
     'scripts/run.sh',
     'deploy.yml',
     'README.md',
   ]);
-  assert.deepEqual(plan.eslint, ['src/a.ts', 'dir/with space/b.ts']);
+  assert.deepEqual(plan.eslint, ['packages/ui/src/a.ts', 'packages/ui/src/with space/b.ts']);
   assert.deepEqual(plan['node-check'], ['src/c.js']);
   assert.deepEqual(plan.json, ['package.json']);
+  assert.deepEqual(plan.jsonc, ['knip.json']);
   assert.deepEqual(plan.shell, ['scripts/run.sh']);
   assert.deepEqual(plan.yaml, ['deploy.yml']);
   assert.deepEqual(plan.skipped, ['README.md']);
@@ -138,4 +176,22 @@ test('readUnstagedPaths asks git for the working-tree diff without --cached', ()
     return [];
   });
   assert.deepEqual(calls, [['diff', '--name-only']]);
+});
+
+test('createContentReader reads partially staged files from the index and the rest from disk', () => {
+  const readContent = createContentReader(
+    ['partial.json'],
+    (filePath) => `index:${filePath}`,
+    (filePath) => `disk:${filePath}`,
+  );
+  assert.equal(readContent('partial.json'), 'index:partial.json');
+  assert.equal(readContent('full.json'), 'disk:full.json');
+});
+
+test('moduleTypeFor uses the extension first, then the package type', () => {
+  const packageType = (type) => () => type;
+  assert.equal(moduleTypeFor('a.mjs', packageType('commonjs')), 'module');
+  assert.equal(moduleTypeFor('a.cjs', packageType('module')), 'commonjs');
+  assert.equal(moduleTypeFor('a.js', packageType('module')), 'module');
+  assert.equal(moduleTypeFor('a.js', packageType(null)), null);
 });

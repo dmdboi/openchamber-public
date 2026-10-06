@@ -130,6 +130,15 @@ test('--files without a file is a usage error', () => {
   assert.match(result.output, /--files expects at least one test file/);
 });
 
+test('--files after another argument is a usage error', () => {
+  withPackage((root) => {
+    writeFixture(root, 'tests/a.test.mjs', PASSING);
+    const result = runRunner([root, '--files', path.join(root, 'tests/a.test.mjs')]);
+    assert.equal(result.status, 1);
+    assert.match(result.output, /--files must be the first argument/);
+  });
+});
+
 test('directory mode still collects test files', () => {
   withPackage((root) => {
     writeFixture(root, 'plain/a.test.mjs', PASSING);
