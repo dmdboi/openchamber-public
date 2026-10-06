@@ -7,7 +7,9 @@ This module provides Git repository operations for the web server runtime, inclu
 - `packages/api/server/lib/git/`: Git module directory containing all Git-related functionality.
   - `index.js`: Public API entry point imported by `packages/api/server/index.js`.
   - `routes.js`: Express route registration for `/api/git/*` endpoints.
-  - `service.js`: Core Git operations (repository, branch, worktree, commit, merge/rebase, status/diff, log).
+  - `service.js`: Core Git operations (repository, branch, worktree, commit, merge/rebase, diff, log); preserves the public status and standard diff exports by composing the status and diff services.
+  - `services/status.js`: Git status reads and tracking-branch lookup, including per-directory refresh serialization, process timeouts, and bounded untracked-directory expansion. Its Git/runtime dependencies are supplied explicitly by `service.js` to keep module ownership acyclic.
+  - `services/diff.js`: Standard `getDiff`/`getPathDiff` reads and their private untracked-diff helpers. Git/runtime dependencies are supplied explicitly by `service.js`.
   - `credentials.js`: Git credentials management.
   - `identity-storage.js`: Git identity profile storage — signature (user.name, user.email, signing) plus the optional provider account and transport the identity authenticates with.
   - `identity-provisioning.js`: creates an identity for each connected provider account, backfills accounts connected before identities carried one, and repoints identities when re-authentication renews a credential.
