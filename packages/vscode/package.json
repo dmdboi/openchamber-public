@@ -289,8 +289,8 @@
     "watch:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch --sourcemap --main-fields=module,main",
     "watch:webview": "vite build --watch",
     "type-check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
-    "lint": "bun x eslint --ext .ts,.tsx src webview",
-    "test": "node ../../scripts/run-isolated-tests.mjs src webview",
+    "lint": "bun x eslint --ext .ts,.tsx src webview tests",
+    "test": "node ../../scripts/run-isolated-tests.mjs tests",
     "package": "vsce package --no-dependencies"
   },
   "devDependencies": {

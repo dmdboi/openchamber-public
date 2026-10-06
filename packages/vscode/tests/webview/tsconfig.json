@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.webview.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@openchamber/sdk": ["../sdk/src/index.ts"],
+      "@openchamber/sdk/schemas": ["../sdk/src/schemas.ts"],
+      "@/*": ["../ui/src/*"],
+      "@vscode/*": ["./webview/*"],
+      "@openchamber/ui/*": ["../ui/src/*"]
+    }
+  },
+  "include": ["**/*"]
+}

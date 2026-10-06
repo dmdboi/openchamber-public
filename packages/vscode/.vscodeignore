@@ -2,6 +2,7 @@
 node_modules/**
 src/**
 webview/**
+tests/**
 .gitignore
 tsconfig.json
 tsconfig.webview.json
