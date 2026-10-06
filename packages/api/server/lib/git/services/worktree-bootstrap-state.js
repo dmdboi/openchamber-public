@@ -1,6 +1,8 @@
 // Single owner of process-local worktree bootstrap state and the registry of
 // active bootstrap tasks. Creation and removal both receive these operations
 // from service.js, so neither duplicates the maps or the persisted-state rules.
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
 
 export const WORKTREE_BOOTSTRAP_PENDING = 'pending';
 export const WORKTREE_BOOTSTRAP_READY = 'ready';
@@ -11,7 +13,7 @@ export const WORKTREE_BOOTSTRAP_PHASE_SETUP_READY = 'setup-ready';
 export const WORKTREE_BOOTSTRAP_RECOVERY_ERROR = 'Worktree bootstrap completion is unknown. Inspect the checkout and repair setup before use.';
 
 export function createWorktreeBootstrapStateService({
-  fsp, path, process, normalizeDirectoryPath, canonicalPath, runGitCommand,
+  normalizeDirectoryPath, canonicalPath, runGitCommand,
 }) {
   const worktreeBootstrapState = new Map();
   const activeWorktreeBootstrapTasks = new Map();

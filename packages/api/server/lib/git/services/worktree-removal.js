@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
 
 export function createWorktreeRemovalService({
-  fsp, path, process, console, normalizeDirectoryPath, canonicalPath,
+  normalizeDirectoryPath, canonicalPath,
   waitForActiveWorktreeBootstrap, clearWorktreeBootstrapState,
   resolveWorktreeProjectContext, listWorktreeEntries, runGitCommand,
   runGitCommandOrThrow, isInsideOrSameDirectory, checkPathExists,

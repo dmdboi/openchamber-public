@@ -94,7 +94,6 @@ export function createRepositoryOperationsService({
       .filter((entry) => entry.ref);
   }
 
-  /** @public */
   async function countStashFiles(directory, refs = []) {
     const { git } = await createRepositoryGitContext(directory);
     const uniqueRefs = Array.from(new Set((Array.isArray(refs) ? refs : []).map((ref) => String(ref || '').trim()).filter(Boolean)));
@@ -119,7 +118,6 @@ export function createRepositoryOperationsService({
     return counts;
   }
 
-  /** @public */
   async function stashPush(directory, options = {}) {
     const { git } = await createRepositoryGitContext(directory);
     const message = typeof options.message === 'string' && options.message.trim()
@@ -134,7 +132,6 @@ export function createRepositoryOperationsService({
     };
   }
 
-  /** @public */
   async function stashApply(directory, options = {}) {
     const { git } = await createRepositoryGitContext(directory);
     const ref = typeof options.ref === 'string' && options.ref.trim() ? options.ref.trim() : 'stash@{0}';
@@ -147,7 +144,6 @@ export function createRepositoryOperationsService({
     return { success: true, ref };
   }
 
-  /** @public */
   async function stashDrop(directory, options = {}) {
     const { git } = await createRepositoryGitContext(directory);
     const ref = typeof options.ref === 'string' && options.ref.trim() ? options.ref.trim() : 'stash@{0}';
@@ -155,7 +151,6 @@ export function createRepositoryOperationsService({
     return { success: true, ref };
   }
 
-  /** @public */
   async function stashPop(directory, options = {}) {
     const ref = typeof options.ref === 'string' && options.ref.trim() ? options.ref.trim() : 'stash@{0}';
     await stashApply(directory, { ref });

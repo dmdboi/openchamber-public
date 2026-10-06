@@ -32,10 +32,8 @@ import {
 } from './runtime.js';
 import fs from 'fs';
 import path from 'path';
-import os from 'os';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
-import crypto from 'node:crypto';
 import { fingerprintRemoteUrl } from '../source-control/url-redaction.js';
 import { readWorktreeDirectorySetting } from '../opencode/shared.js';
 import { normalizeGitOutputPath } from './output-path.js';
@@ -673,7 +671,7 @@ export async function resolveWorktreeTopLevel(directory) {
 }
 
 
-const integrateService = createIntegrateService({ runGitCommand, runGitCommandOrThrow, normalizeDirectoryPath, path, os, fsp });
+const integrateService = createIntegrateService({ runGitCommand, runGitCommandOrThrow, normalizeDirectoryPath });
 export const { computeIntegratePlan, getIntegrateConflictDetails, isCherryPickInProgress,
   integrateWorktreeCommits, abortIntegrate, continueIntegrate } = integrateService;
 
@@ -728,13 +726,13 @@ const { getDiff, getPathDiff, getNoIndexDiff } = createDiffService({
 });
 export { getDiff, getPathDiff };
 
-const { getFileDiff, revertFile, applyHunk, collectDiffs, stageFile, stageFiles, unstageFile, unstageFiles } = createFileService({
+const { getFileDiff, revertFile, applyHunk, stageFiles, unstageFiles } = createFileService({
   createRepositoryGitContext, createGit, getGitBinary, getDiff, resolveGitFileContext,
   resolveGitRepositoryRoot, normalizeDirectoryPath, normalizeFilePathList,
   validateRepositoryFilePaths, withGitIndexMutationQueue, runGitCommand,
   readSubmoduleState, parseGitErrorText,
 });
-export { getFileDiff, revertFile, applyHunk, collectDiffs, stageFile, stageFiles, unstageFile, unstageFiles };
+export { getFileDiff, revertFile, applyHunk, stageFiles, unstageFiles };
 
 const branchQueriesService = createBranchQueriesService({ createRepositoryGitContext });
 const branchService = createBranchesService({
@@ -776,7 +774,7 @@ const publishWorktreeTopologyChange = worktreeTopologyService.publishWorktreeTop
 // Bootstrap state has one owner. Creation and removal receive the same
 // operations, so neither duplicates the maps or the persisted-state rules.
 const worktreeBootstrapStateService = createWorktreeBootstrapStateService({
-  fsp, path, process, normalizeDirectoryPath, canonicalPath, runGitCommand,
+  normalizeDirectoryPath, canonicalPath, runGitCommand,
 });
 const {
   setWorktreeBootstrapState, trackWorktreeBootstrapTask, getRecordedBootstrapPhase,
@@ -791,7 +789,6 @@ export const { getWorktreeBootstrapStatus, completeWorktreeCheckoutHydration } =
 // dependency itself stays one-way.
 let worktreePopulationService = null;
 const worktreeCreationService = createWorktreeCreationService({
-  fsp, path, os, process, console, execFileAsync,
   normalizeDirectoryPath, normalizeGitOutputPath, readWorktreeDirectorySetting,
   runGitCommand, runGitCommandOrThrow, buildGitEnv,
   cleanBranchName, normalizeStartRef, parseRemoteBranchRef, resolveRemoteBranchRef,
@@ -806,7 +803,6 @@ export const { validateWorktreeCreate, previewWorktreeCreate, createWorktree } =
 const { resolveWorktreeProjectContext, listWorktreeEntries, loadProjectStartCommand } = worktreeCreationService;
 
 worktreePopulationService = createWorktreePopulationService({
-  fsp, fs, path, crypto,
   normalizeDirectoryPath, normalizeGitOutputPath,
   runGitCommand, runGitCommandOrThrow, buildGitEnv,
   getFileIdentity, wait,
@@ -815,21 +811,21 @@ worktreePopulationService = createWorktreePopulationService({
 export const { ensureWorktreeLongpaths, populateWorktreeWithLockRecovery, inspectContributorCheckoutActions } = worktreePopulationService;
 
 const worktreeStateService = createWorktreeStateService({
-  fsp, path, os, normalizeDirectoryPath, runGitCommand, runGitCommandOrThrow,
+  normalizeDirectoryPath, runGitCommand, runGitCommandOrThrow,
   buildGitEnv, createGit, isGitRepository, canonicalPath, resolveGitRepositoryRoot,
   resolveGitInternalPath, cleanBranchName, resolveWorktreeProjectContext,
 });
 export const { snapshotWorktree, isLinkedWorktree, validateWorktreeDirectory, canonicalizeWorktreeState } = worktreeStateService;
 
 const worktreeRemovalService = createWorktreeRemovalService({
-  fsp, path, process, console, normalizeDirectoryPath, canonicalPath,
+  normalizeDirectoryPath, canonicalPath,
   waitForActiveWorktreeBootstrap, clearWorktreeBootstrapState,
   resolveWorktreeProjectContext, listWorktreeEntries, runGitCommand,
   runGitCommandOrThrow, isInsideOrSameDirectory, checkPathExists,
   getFileIdentity, toGitPath, cleanBranchName, wait, isLinkedWorktree,
   publishWorktreeTopologyChange,
 });
-export const removeWorktree = (...args) => worktreeRemovalService(...args);
+export const removeWorktree = worktreeRemovalService;
 
-const mergeService = createMergeService({ createRepositoryGitContext, runGitCommandWithoutEditor, resolveGitInternalPath, fsp });
+const mergeService = createMergeService({ createRepositoryGitContext, runGitCommandWithoutEditor, resolveGitInternalPath });
 export const { rebase, abortRebase, merge, abortMerge, continueRebase, continueMerge, getConflictDetails } = mergeService;

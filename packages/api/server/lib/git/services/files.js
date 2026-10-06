@@ -399,26 +399,6 @@ async function applyHunk(directory, filePath, options = {}) {
   });
 }
 
-async function collectDiffs(directory, files = []) {
-  const results = [];
-  for (const filePath of files) {
-    try {
-      const diff = await getDiff(directory, { path: filePath });
-      if (diff && diff.trim().length > 0) {
-        results.push({ path: filePath, diff });
-      }
-    } catch (error) {
-      console.error(`Failed to diff ${filePath}:`, error);
-    }
-  }
-  return results;
-}
-
-/** @public */
-async function stageFile(directory, filePath) {
-  await stageFiles(directory, [filePath]);
-}
-
 async function stageFiles(directory, paths) {
   if (!directory) {
     throw new Error('directory and path are required for stageFile');
@@ -463,10 +443,6 @@ async function stageFiles(directory, paths) {
   });
 }
 
-async function unstageFile(directory, filePath) {
-  await unstageFiles(directory, [filePath]);
-}
-
 async function unstageFiles(directory, paths) {
   if (!directory) {
     throw new Error('directory and path are required for unstageFile');
@@ -492,5 +468,5 @@ async function unstageFiles(directory, paths) {
 }
 
 
-  return { getFileDiff, revertFile, applyHunk, collectDiffs, stageFile, stageFiles, unstageFile, unstageFiles };
+  return { getFileDiff, revertFile, applyHunk, stageFiles, unstageFiles };
 }

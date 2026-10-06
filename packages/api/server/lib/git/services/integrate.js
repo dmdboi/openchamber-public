@@ -1,4 +1,8 @@
-export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, normalizeDirectoryPath, path, os, fsp }) {
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, normalizeDirectoryPath }) {
   const trimGitLines = (value) => String(value || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -84,7 +88,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     return raw;
   };
 
-  /** @public */
   async function computeIntegratePlan(input = {}) {
     const repoRoot = normalizeIntegratePath(input.repoRoot, 'repoRoot');
     const sourceBranch = normalizeIntegrateBranch(input.sourceBranch, 'sourceBranch');
@@ -138,7 +141,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     }
   };
 
-  /** @public */
   async function getIntegrateConflictDetails(tmpDir) {
     const target = normalizeIntegratePath(tmpDir, 'tempWorktreePath');
     const [status, unmerged, diff, meta, patch] = await Promise.all([
@@ -158,7 +160,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     };
   }
 
-  /** @public */
   async function isCherryPickInProgress(tmpDir) {
     const target = normalizeIntegratePath(tmpDir, 'tempWorktreePath');
     const head = await runGitCommand(target, ['rev-parse', '--verify', '--quiet', 'CHERRY_PICK_HEAD']);
@@ -210,7 +211,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     currentCommit: normalizeIntegrateSha(state.currentCommit),
   });
 
-  /** @public */
   async function integrateWorktreeCommits(inputPlan = {}) {
     const plan = await normalizeIntegratePlan(inputPlan);
     if (plan.commits.length === 0) {
@@ -274,7 +274,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     }
   }
 
-  /** @public */
   async function abortIntegrate(stateInput = {}) {
     const state = normalizeIntegrateState(stateInput);
     await runGitCommand(state.tempWorktreePath, ['cherry-pick', '--abort']).catch(() => undefined);
@@ -282,7 +281,6 @@ export function createIntegrateService({ runGitCommand, runGitCommandOrThrow, no
     return { success: true };
   }
 
-  /** @public */
   async function continueIntegrate(stateInput = {}) {
     const state = normalizeIntegrateState(stateInput);
     const cont = await runGitCommand(state.tempWorktreePath, ['cherry-pick', '--continue']);
