@@ -70,6 +70,7 @@ const LINT_SCOPES = [
   'packages/vscode/webview/',
   'packages/vscode/tests/',
   'packages/web/src/',
+  'packages/web/tests/',
 ];
 
 const SHELL_SHEBANG = /^#!.*\b(?:ba)?sh\b/;
