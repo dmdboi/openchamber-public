@@ -56,7 +56,6 @@ mock.module('./quotaProviders', () => ({
   fetchQuotaForProvider: mock(),
   listConfiguredQuotaProviders: mock(),
 }));
-mock.module('./opencodeGoQuota', () => ({ fetchOpenCodeGoUsage: mock() }));
 mock.module('./quotaCredentials', () => ({
   credentialStatus: mock(),
   deleteCredential: mock(),

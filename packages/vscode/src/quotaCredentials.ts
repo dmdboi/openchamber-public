@@ -43,9 +43,6 @@ export const writeCredential = (provider: ManagedProvider, value: ManagedCredent
   return credentialStatus(provider);
 };
 export const deleteCredential = (provider: ManagedProvider) => { try { fs.unlinkSync(target(provider)); } catch (error) { if ((error as { code?: string }).code !== 'ENOENT') throw error; } };
-export const deleteLegacyOpenCodeGoCredential = () => {
-  try { fs.unlinkSync(path.join(directory(), 'opencode-go.json')); } catch (error) { if ((error as { code?: string }).code !== 'ENOENT') throw error; }
-};
 
 export const importCursorCredential = () => {
   const db = path.join(os.homedir(), 'Library', 'Application Support', 'Cursor', 'User', 'globalStorage', 'state.vscdb');

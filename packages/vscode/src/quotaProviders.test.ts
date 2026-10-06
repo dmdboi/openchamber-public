@@ -38,7 +38,8 @@ configureOpenCodeCredentials({
   ],
 });
 
-import { activateQuotaGiftReset, fetchClinePassQuota, fetchHyperQuota, fetchKiloQuota, fetchKimiQuota, fetchOllamaCloudQuota, fetchQuotaForProvider, fetchXaiQuota, fetchZenmuxQuota } from './quotaProviders';
+import { activateQuotaGiftReset, fetchClinePassQuota, fetchHyperQuota, fetchKiloQuota, fetchKimiQuota, fetchOllamaCloudQuota, fetchQuotaForProvider, fetchXaiQuota, fetchZenmuxQuota, listConfiguredQuotaProviders } from './quotaProviders';
+import * as webQuotaRegistry from '../../web/server/lib/quota/providers/index.js';
 import { validateCredential } from './quotaCredentials';
 
 type MockResponseInit = { ok?: boolean; status?: number };
@@ -2231,5 +2232,23 @@ describe('xAI quota provider (VS Code parity)', () => {
 
     assert.equal(result.configured, false);
     assert.equal(requests, 0);
+  });
+});
+
+describe('Quota provider parity (VS Code re-exports the shared web registry)', () => {
+  test('re-exports the shared implementation for consolidated providers', () => {
+    assert.equal(fetchKimiQuota, webQuotaRegistry.fetchKimiQuota);
+    assert.equal(fetchHyperQuota, webQuotaRegistry.fetchHyperQuota);
+    assert.equal(fetchClinePassQuota, webQuotaRegistry.fetchClinePassQuota);
+    assert.equal(fetchXaiQuota, webQuotaRegistry.fetchXaiQuota);
+    assert.equal(fetchZenmuxQuota, webQuotaRegistry.fetchZenmuxQuota);
+  });
+
+  test('keeps its own dispatcher and configured list for the local providers', () => {
+    // kilo, ollama-cloud, claude, cursor, zhipuai and minimax take a different
+    // injected dependency shape or credential source than the web modules, so
+    // the extension dispatcher and configured list are not the web ones.
+    assert.notEqual(fetchQuotaForProvider, webQuotaRegistry.fetchQuotaForProvider);
+    assert.notEqual(listConfiguredQuotaProviders, webQuotaRegistry.listConfiguredQuotaProviders);
   });
 });

@@ -1,15 +1,7 @@
-import * as net from 'node:net';
-
-// Mirrors the web runtime policy for distant quota endpoints. The extension
-// host has its own Node fetch stack and does not inherit server defaults.
-export function applyConnectAttemptTimeout(
-  netModule: Partial<Pick<typeof net, 'setDefaultAutoSelectFamilyAttemptTimeout'>> = net,
-): boolean {
-  try {
-    if (!netModule.setDefaultAutoSelectFamilyAttemptTimeout) return false;
-    netModule.setDefaultAutoSelectFamilyAttemptTimeout(5_000);
-    return true;
-  } catch {
-    return false;
-  }
-}
+/**
+ * Shared with packages/web/server/lib/network-defaults.js via esbuild bundling.
+ * The web module is the canonical owner of the connection-attempt policy; keep
+ * this a thin re-export so the extension host and every Node server entrypoint
+ * cannot diverge.
+ */
+export { applyConnectAttemptTimeout } from '../../web/server/lib/network-defaults.js';

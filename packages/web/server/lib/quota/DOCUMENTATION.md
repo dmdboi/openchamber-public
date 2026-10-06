@@ -11,10 +11,27 @@ extension applies the same policy in its own process at activation.
 ## Entrypoints and structure
 - `packages/web/server/lib/quota/index.js`: public entrypoint imported by `packages/web/server/index.js`.
 - `packages/web/server/lib/quota/routes.js`: Express route registration for quota endpoints.
-- `packages/web/server/lib/quota/providers/index.js`: provider registry, configured-provider list, and provider dispatcher.
+- `packages/web/server/lib/quota/providers/`: provider registry, configured-provider list, and provider dispatcher.
 - `packages/web/server/lib/quota/providers/google/`: Google-specific auth, API, and transform modules.
 - `packages/web/server/lib/quota/providers/claude/`: Claude credential discovery, usage transforms, and rate-limit handling.
 - `packages/web/server/lib/quota/utils/`: shared auth, transform, and formatting helpers.
+
+## VS Code sharing
+
+`packages/vscode/src/quotaProviders.ts` re-exports `providers/index.js` (bundled
+into the extension host with esbuild) so the web server, desktop app and VS Code
+run one provider implementation for `codex`, `github-copilot`, `google`, `kimi`,
+`nano-gpt`, `openrouter`, `zai`, `wafer`, `cline-pass`, `hyper`, `xai`, `zenmux`,
+`neuralwatt`, `exe-dev`, `opencode-go`, `deepinfra` and `deepseek`.
+`claude`, `cursor`, `zhipuai` and `minimax` stay duplicated in the extension:
+their web module reads additional credential sources or calls a different
+endpoint set, so re-exporting would change credentials/storage or quota
+semantics. `kilo` and `ollama-cloud` also stay local because their web
+`fetchQuota` takes a different injected dependency shape. The extension keeps its
+own configured-provider list, managed credential store, gift-reset activation
+and dispatcher.
+`providers/index.d.ts` declares the registry for the extension host; keep it in
+step when a fetcher is added to or removed from `providers/index.js`.
 
 ## Supported provider IDs (dispatcher)
 
@@ -77,7 +94,7 @@ On the first OpenCode Go usage refresh after upgrading, OpenChamber deletes the 
 
 ## Codex credit balance semantics
 
-Codex `credits.balance` is an OpenAI credit count, not a dollar amount. Web/Electron and VS Code expose it as a plain numeric `credits_balance.valueLabel` under the UI's localized Credits Balance title, without a currency symbol or two-decimal money rounding. Numeric strings are accepted; zero, unlimited, and unavailable balances retain their existing handling. Keep `providers/codex.js` and `packages/vscode/src/quotaProviders.ts` in sync. The separate business-account `spend_control.individual_limit` window is unchanged.
+Codex `credits.balance` is an OpenAI credit count, not a dollar amount. The shared provider exposes it as a plain numeric `credits_balance.valueLabel` under the UI's localized Credits Balance title, without a currency symbol or two-decimal money rounding. Numeric strings are accepted; zero, unlimited, and unavailable balances retain their existing handling. The separate business-account `spend_control.individual_limit` window is unchanged.
 
 ## Claude credential and limit semantics
 
@@ -96,7 +113,6 @@ xAI quota reports the SuperGrok billing cycle from `POST https://grok.com/grok_a
 
 - **Credentials are read-only.** OpenChamber never refreshes the xAI OAuth token. xAI rotates (and rejects the previous) refresh token on every exchange, and OpenCode 2.x owns the credential store without exposing a refresh route, so a quota-side refresh would consume the token OpenCode still holds and force the user to re-authorize ("Grok expired every morning"). The provider uses the stored access token while it is valid and returns an explicit expired error (no `auth.x.ai` call) once it is stale, matching the Claude provider's "sign in again" handling; OpenCode's own refresh persists the rotated pair.
 - **Skipping the standalone refresh also required OpenCode 2.x**: the pre-2.x `auth.json` write path no longer exists (`packages/web/server/lib/opencode/auth.js` is read-only), so there is nowhere correct to persist a rotated pair.
-- Keep `packages/web/server/lib/quota/providers/xai.js` and `packages/vscode/src/quotaProviders.ts` (`fetchXaiQuota`) in sync — the VS Code extension duplicates this logic rather than importing the web provider.
 
 ## Add a new provider (quick steps)
 1. Choose module shape based on complexity:
@@ -119,29 +135,31 @@ In 2025/2026 MiniMax rebranded "Coding Plan" to "Token Plan" alongside the M3 mo
 - **model_remains array**: Now contains entries for multiple model categories (chat, speech, video, image). The provider selects the chat-model entry by matching `MiniMax-M*`, then `general`/`chat`/`text` by name, then any entry with a remaining percent.
 - **Window status**: The `current_interval_status` and `current_weekly_status` fields indicate whether a window is active. Status `3` means the window is not applicable for the current plan tier (e.g. legacy plans without weekly limits). The provider omits inactive windows.
 
+The VS Code extension keeps the legacy `coding_plan/remains` endpoint only; it has not adopted the M3 `token_plan/remains` fallback, so `packages/web/server/lib/quota/providers/minimax-shared.js` and `packages/vscode/src/quotaProviders.ts` diverge until that provider is consolidated.
+
 ## ClinePass quota semantics
 
-ClinePass reads `data.limits` from its usage-limits endpoint. Web/Electron and
-VS Code accept only known window types with finite numeric or non-empty numeric
-string percentages. Invalid windows are skipped independently; no usable windows
-is a failed refresh, not zero usage. Both implementations choose a non-empty
-`key`, then `token`, and expose auth/fetch dependencies for focused tests.
+ClinePass reads `data.limits` from its usage-limits endpoint. The provider
+accepts only known window types with finite numeric or non-empty numeric string
+percentages. Invalid windows are skipped independently; no usable windows is a
+failed refresh, not zero usage. It chooses a non-empty `key`, then `token`, and
+exposes auth/fetch dependencies for focused tests.
 Saved UI provider-visibility lists remain authoritative; installations without a
 saved list include ClinePass through the provider registry.
 
 ## DeepInfra balance semantics
 
-DeepInfra reports the spendable credit through `GET https://api.deepinfra.com/v1/me?checklist=true` (bearer API key). The documented `checklist.stripe_balance` is **negative when funds are ready to spend** and **positive when money is owed**, so the provider negates it before rendering the `credits_balance` money label (`-$X.XX` when a balance is owed). The API key is read from the OpenCode `auth.json` entry (`deepinfra`, `deep-infra`, `deep_infra`). Keep `packages/web/server/lib/quota/providers/deepinfra.js` and `packages/vscode/src/quotaProviders.ts` (`fetchDeepinfraQuota`) in sync — the VS Code extension duplicates this parsing logic rather than importing the web provider.
+DeepInfra reports the spendable credit through `GET https://api.deepinfra.com/v1/me?checklist=true` (bearer API key). The documented `checklist.stripe_balance` is **negative when funds are ready to spend** and **positive when money is owed**, so the provider negates it before rendering the `credits_balance` money label (`-$X.XX` when a balance is owed). The API key is read from the OpenCode `auth.json` entry (`deepinfra`, `deep-infra`, `deep_infra`).
 
 ## Charm Hyper balance semantics
 
 `GET https://hyper.charm.land/v1/credits` returns a team's current Hypercredit balance, not a percentage or reset timestamp. The [Hyper FAQ](https://hyper.charm.land/faq) defines one Hypercredit as $0.05. Both runtimes expose `credits_balance` in dollars and `credits` as a numeric label under the UI's localized window title. Keep English unit text out of that numeric label.
 
-Web and VS Code accept finite numeric balances and non-empty numeric strings. Missing, blank, or malformed balances remain explicit failures; zero is valid. Credential lookup uses a non-empty string `key`, then `token`, so malformed or blank keys cannot mark the provider configured or hide a valid fallback token. Hyper fetchers accept `readAuth` and `fetchImpl` dependencies for tests without replacing filesystem or auth modules.
+Web and VS Code accept finite numeric balances and non-empty numeric strings. Missing, blank, or malformed balances remain explicit failures; zero is valid. Credential lookup uses a non-empty string `key`, then `token`, so malformed or blank keys cannot mark the provider configured or hide a valid fallback token. The fetcher accepts `readAuth` and `fetchImpl` dependencies for tests without replacing filesystem or auth modules.
 
 ## ZenMux PAYG balance semantics
 
-`GET https://zenmux.ai/api/v1/management/payg/balance` returns prepaid Pay As You Go credits, not a percentage or reset timestamp. The documented payload nests `data.total_credits` in USD (1 credit = $1). Both runtimes expose that as `credits_balance`. Usage is optional and uses a ZenMux Platform API key stored as a managed quota credential (`platformApiKey`). The OpenCode `auth.json` chat key is never sent. If that Platform API key is missing, ZenMux is not configured and the balance endpoint is not called. Missing, blank, or malformed totals remain explicit failures; zero is valid. Keep `packages/web/server/lib/quota/providers/zenmux.js` and `packages/vscode/src/quotaProviders.ts` (`fetchZenmuxQuota`) in sync.
+`GET https://zenmux.ai/api/v1/management/payg/balance` returns prepaid Pay As You Go credits, not a percentage or reset timestamp. The documented payload nests `data.total_credits` in USD (1 credit = $1). The provider exposes that as `credits_balance`. Usage is optional and uses a ZenMux Platform API key stored as a managed quota credential (`platformApiKey`). The OpenCode `auth.json` chat key is never sent. If that Platform API key is missing, ZenMux is not configured and the balance endpoint is not called. Missing, blank, or malformed totals remain explicit failures; zero is valid.
 
 ## Kilo Code balance semantics
 
@@ -155,7 +173,7 @@ Web and VS Code accept finite numeric balances and non-empty numeric strings. Mi
 
 Credentials resolve in alias order, first match wins. OpenCode's China plan id `kimi-code-plan-cn` (kimi.com) comes before the pre-split `kimi-for-coding` and `kimi` ids, because a leftover pre-split key can hold a dead credential that would otherwise shadow the live China plan key and return 401. The global plan id `kimi-code-plan-global` (kimi.ai, API base `api.kimi.ai`) stays last: it is not verified that a global key works at the `api.kimi.com` usage address, so it must not outrank a working pre-split key.
 
-The provider computes `usedPercent` from whichever of `used`/`remaining` is present (`used` takes precedence when both exist) rather than assuming one field name. Both `packages/web/server/lib/quota/providers/kimi.js` and `packages/vscode/src/quotaProviders.ts` (`fetchKimiQuota`) must stay in sync — the VS Code extension duplicates this parsing logic rather than importing it.
+The provider computes `usedPercent` from whichever of `used`/`remaining` is present (`used` takes precedence when both exist) rather than assuming one field name.
 
 ## Ollama Cloud settings-page shapes
 
@@ -166,9 +184,7 @@ Ollama Cloud authentication uses two cookies (`aid` and `__Secure-session`) past
 GitHub Copilot usage exposes only the `premium_interactions` snapshot as the
 `premium_interactions` window. Shared UI labels that window **AI Credits** and treats it as
 the provider's primary usage marker. Legacy chat-request quota and unlimited
-completion quota are intentionally omitted. Keep
-`packages/web/server/lib/quota/providers/copilot.js` and
-`packages/vscode/src/quotaProviders.ts` in sync.
+completion quota are intentionally omitted.
 
 The `/copilot_internal/user` endpoint is undocumented; its quota semantics mirror
 what `microsoft/vscode-copilot-chat` consumes (`CopilotUserQuotaInfo`). Each
@@ -187,8 +203,6 @@ OpenRouter quota reads `GET <base>/key`, where `<base>` is the provider's config
 The documented `limit`, `limit_remaining`, and `limit_reset` fields are present and null on unlimited keys; null means unlimited, never missing data. For a limited key, window usage is `limit - limit_remaining`, not `usage`: `usage` is all-time and measures a different axis from the current reset window. Pairing `usage` with the current limit produces a wrong number. `limit_remaining` is server-computed and already honors `include_byok_in_limit`, so `byok_*` fields are ignored.
 
 Unlimited keys report `usage_monthly` in a `monthly` window with no percent. `limit_reset` is a period string (`daily`, `weekly`, `monthly`, or null), not a timestamp; `resetAt` is derived from the documented midnight-UTC boundaries, with weeks starting Monday. A set `limit` with a null `limit_reset` is a lifetime cap and maps to the `credits` window with no reset.
-
-Keep `packages/web/server/lib/quota/providers/openrouter.js` and `packages/vscode/src/quotaProviders.ts` in sync, as with the Kimi and Copilot providers; the VS Code extension duplicates this parsing logic rather than importing the web provider.
 
 ## Zhipu AI Coding Plan semantics
 
@@ -211,7 +225,7 @@ The primary path reads `GetCurrentPeriodUsage` `planUsage` (Pro/Ultra). Enterpri
 - Keep provider IDs stable; clients use them directly.
 - Avoid adding alias-based dispatch in `fetchQuotaForProvider`; dispatch currently expects exact provider IDs.
 - Keep Google behavior changes isolated and review `providers/google/*` together.
-- Z.ai Coding Plan exposes separate 5-hour and weekly token/credit limit entries plus a monthly `TIME_LIMIT` for MCP tools. The API renamed the limit type from `TOKENS_LIMIT` to `CREDIT_LIMIT` (same `unit`/`number` window semantics); `CREDIT_LIMIT` entries additionally carry `usage` (total), `currentValue` (consumed), and `remaining`, surfaced as a credit `valueLabel`, and the payload's `data.level` becomes `planLabel`. Web and VS Code must preserve these windows and stay in sync.
+- Z.ai Coding Plan exposes separate 5-hour and weekly token/credit limit entries plus a monthly `TIME_LIMIT` for MCP tools. The API renamed the limit type from `TOKENS_LIMIT` to `CREDIT_LIMIT` (same `unit`/`number` window semantics); `CREDIT_LIMIT` entries additionally carry `usage` (total), `currentValue` (consumed), and `remaining`, surfaced as a credit `valueLabel`, and the payload's `data.level` becomes `planLabel`. The web provider owns these windows and `packages/vscode/src/quotaProviders.ts` re-exports it.
 - Z.ai gift (bonus) resets come from a supplementary `GET https://api.z.ai/api/biz/customer-package-reset/list?targetType=PERSONAL` with the same bearer token, fetched after a successful quota fetch. `expireTime` strings (`YYYY-MM-DD HH:mm:ss`) are parsed as UTC+8. Only `available: true` records with a numeric `recordId` and a parseable, non-expired `expireTime` are considered; the nearest expiry wins and is attached as `giftReset` (`{recordId, expireAt}`) on the window matching `windowSeconds` (`fiveHourResets` → 5h, `weekResets` → weekly). Expired records are never shown. The request is supplementary: any failure, non-ok response, or malformed payload leaves the quota result untouched with no `giftReset`. Activation goes through `POST /api/quota/:providerId/gift-reset/use` (z.ai aliases only), which posts `{targetType: 'PERSONAL', resetType, recordId, requestId: <uuid>}` to `https://api.z.ai/api/biz/customer-package-reset/use` (`resetType` is `'FIVE_HOUR'` for the 5h window and `'WEEK'` for the weekly window — the weekly value was verified live against a real weekly reset). Both runtimes must keep this in sync.
 
 ## NanoGPT subscription quota semantics
@@ -221,5 +235,4 @@ and `weeklyInputTokens`, with fractional `percentUsed`, millisecond `resetAt`,
 and total limits under `limits.dailyInputTokens` / `limits.weeklyInputTokens`.
 The daily cap is optional. A null quota is omitted; a degraded quota remains
 visible with unknown percentages. Legacy `daily` / `monthly` request windows
-remain supported when current fields are absent. Keep the web provider and
-`fetchNanoGptQuota` in `packages/vscode/src/quotaProviders.ts` in sync.
+remain supported when current fields are absent.
