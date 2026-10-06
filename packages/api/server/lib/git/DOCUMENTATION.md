@@ -7,9 +7,23 @@ This module provides Git repository operations for the web server runtime, inclu
 - `packages/api/server/lib/git/`: Git module directory containing all Git-related functionality.
   - `index.js`: Public API entry point imported by `packages/api/server/index.js`.
   - `routes.js`: Express route registration for `/api/git/*` endpoints.
-  - `service.js`: Core Git operations (repository, branch, worktree, commit, merge/rebase, diff, log); preserves the public status and standard diff exports by composing the status and diff services.
-  - `services/status.js`: Git status reads and tracking-branch lookup, including per-directory refresh serialization, process timeouts, and bounded untracked-directory expansion. Its Git/runtime dependencies are supplied explicitly by `service.js` to keep module ownership acyclic.
-  - `services/diff.js`: Standard `getDiff`/`getPathDiff` reads and their private untracked-diff helpers. Git/runtime dependencies are supplied explicitly by `service.js`.
+  - `service.js`: Git runtime and shared primitives; composes the focused services below and preserves their existing public exports.
+  - `services/status.js`: Status reads and tracking-branch lookup, including refresh serialization, process timeouts, and bounded untracked-directory expansion.
+  - `services/untracked-files.js`: Bounded listing and expansion of untracked directories for status reads.
+  - `services/diff.js`: Standard `getDiff`/`getPathDiff` reads and no-index diff helpers.
+  - `services/files.js`: File contents, revert and hunk operations, and index staging. The index-mutation queue remains owned by `service.js` and is injected here.
+  - `services/branch-queries.js`: Remote branch listings and unpublished-commit counts, including the bounded remote-head cache.
+  - `services/branches.js`: Branch creation, checkout, mutation, and branch-base lookup.
+  - `services/history.js`: Commit summaries, log, and commit-file inspection.
+  - `services/range-diff.js`: Exact-ref range comparisons, including read-only working-tree comparisons through a temporary index.
+  - `services/identity.js`: Repository author identity and OpenChamber-owned transport configuration.
+  - `services/integrate.js`: Worktree commit integration and its temporary-worktree cleanup.
+  - `services/merge.js`: Merge/rebase execution, continuation, abort, and conflict details.
+  - `services/worktrees.js`: Worktree listing and bounded topology-change tracking.
+  - `services/worktree-state.js`: Snapshot, worktree identity, directory validation, and canonical worktree state.
+  - `services/worktree-removal.js`: Worktree removal and its `.git` symlink recovery and rollback logic. It uses bootstrap state owned by `service.js`.
+  - Worktree creation and bootstrap still live in `service.js` with their state helpers; removal receives the state operations it needs.
+  - Each service receives its shared Git/runtime dependencies from `service.js`; it does not import back into the composition module.
   - `credentials.js`: Git credentials management.
   - `identity-storage.js`: Git identity profile storage — signature (user.name, user.email, signing) plus the optional provider account and transport the identity authenticates with.
   - `identity-provisioning.js`: creates an identity for each connected provider account, backfills accounts connected before identities carried one, and repoints identities when re-authentication renews a credential.
