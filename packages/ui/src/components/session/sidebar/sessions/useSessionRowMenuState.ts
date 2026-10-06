@@ -39,16 +39,16 @@ export const useSessionRowMenuState = ({
     ? openSidebarMenuKey === contextMenuInstanceKey && !closeRequested
     : legacyContextMenuOpen;
 
-  const requestClose = (instanceKey: string) => {
+  const requestClose = React.useCallback((instanceKey: string) => {
     if (openSidebarMenuKey !== instanceKey) return;
     if (hasDeferredCloseWork()) {
       setCloseRequested(true);
       return;
     }
     setOpenSidebarMenuKey(null);
-  };
+  }, [hasDeferredCloseWork, openSidebarMenuKey, setCloseRequested, setOpenSidebarMenuKey]);
 
-  const handleMenuOpenChange = (open: boolean) => {
+  const handleMenuOpenChange = React.useCallback((open: boolean) => {
     if (open) {
       setLegacyContextMenuOpen(false);
       setCloseRequested(false);
@@ -56,9 +56,9 @@ export const useSessionRowMenuState = ({
       return;
     }
     requestClose(menuInstanceKey);
-  };
+  }, [menuInstanceKey, requestClose, setLegacyContextMenuOpen, setOpenSidebarMenuKey]);
 
-  const handleContextMenuOpenChange = (open: boolean) => {
+  const handleContextMenuOpenChange = React.useCallback((open: boolean) => {
     if (!contextMenuInstanceKey) {
       setLegacyContextMenuOpen(open);
       return;
@@ -69,7 +69,7 @@ export const useSessionRowMenuState = ({
       return;
     }
     requestClose(contextMenuInstanceKey);
-  };
+  }, [contextMenuInstanceKey, requestClose, setLegacyContextMenuOpen, setOpenSidebarMenuKey]);
 
   const handleMenuOpenChangeComplete = (open: boolean) => {
     if (open) return;
@@ -102,7 +102,7 @@ export const useSessionRowMenuState = ({
     };
     window.addEventListener('blur', onBlur);
     return () => window.removeEventListener('blur', onBlur);
-  }, [isMenuOpen, isContextMenuOpen]);
+  }, [handleContextMenuOpenChange, handleMenuOpenChange, isMenuOpen, isContextMenuOpen]);
 
   return {
     isMenuOpen,

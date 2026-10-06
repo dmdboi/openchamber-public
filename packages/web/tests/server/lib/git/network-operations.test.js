@@ -3398,7 +3398,7 @@ process.exit(safe ? 0 : 1);
   });
 
   it('waits for a late filesystem mutation before recording timeout and cleaning it up', async () => {
-    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.useFakeTimers();
     const parent = await fs.mkdtemp(path.join(os.tmpdir(), 'openchamber-network-clone-fs-timeout-'));
     temporaryDirectories.push(parent);
     const destination = path.join(parent, 'repository');
@@ -3426,7 +3426,7 @@ process.exit(safe ? 0 : 1);
 
     const running = setupValue.service.execute(plan.operationId);
     await mkdirStarted;
-    vi.setSystemTime(Date.now() + 10);
+    await vi.advanceTimersByTimeAsync(5);
     expect(setupValue.service.get(plan.operationId).state).toBe('running');
     releaseMkdir();
     await expect(running).resolves.toMatchObject({

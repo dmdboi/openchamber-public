@@ -75,6 +75,15 @@ test('--files runs the listed file from its package root', () => {
   });
 });
 
+test('directory mode runs each file from its package root', () => {
+  withPackage((root) => {
+    writeFixture(root, 'tests/cwd.test.mjs', CWD_FROM_PACKAGE);
+    const result = runRunner([path.join(root, 'tests')]);
+    assert.equal(result.status, 0, result.output);
+    assert.match(result.output, /1\/1 test files passed/);
+  });
+});
+
 test('--files reports a failing file with a non-zero exit', () => {
   withPackage((root) => {
     writeFixture(root, 'tests/fail.test.mjs', [
