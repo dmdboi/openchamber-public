@@ -1,4 +1,31 @@
+import { z } from 'zod';
+
 import { MCP_PROTOCOLS, type McpCodemodeChoice, type McpDraft, type McpProtocol } from '@/stores/useMcpConfigStore';
+
+/**
+ * A parsed JSON value. The importer reads untrusted paste content, so every
+ * field is decoded through this domain type before it is interpreted.
+ */
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
+  ]),
+);
+
+const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
+const stringArraySchema = z.array(z.string());
+const stringSchema = z.string();
+const numberSchema = z.number();
 
 export interface ImportedMcpResult {
   readonly ok: true;
@@ -26,19 +53,33 @@ export interface ImportedMcpResult {
 
 type ImportedMcpError =
   | { readonly ok: false; readonly error: string }
-  | { readonly ok: false; readonly error: string; readonly parsed: unknown };
+  | { readonly ok: false; readonly error: string; readonly parsed: JsonValue };
 
 export type ImportedMcpOutcome = ImportedMcpResult | ImportedMcpError;
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+/** Decode a JSON value as an object, or null when it is an array or primitive. */
+function asJsonObject(value: JsonValue): JsonObject | null {
+  const parsed = jsonObjectSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
-function stringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((v) => typeof v === 'string');
+function asString(value: JsonValue): string | null {
+  const parsed = stringSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
-function buildError(message: string, parsed?: unknown): ImportedMcpError {
+function asNumber(value: JsonValue): number | null {
+  const parsed = numberSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** A JSON array whose every element is a string, or null otherwise. */
+function asStringArray(value: JsonValue): string[] | null {
+  const parsed = stringArraySchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+function buildError(message: string, parsed?: JsonValue): ImportedMcpError {
   return parsed !== undefined
     ? { ok: false, error: message, parsed }
     : { ok: false, error: message };
@@ -47,25 +88,26 @@ function buildError(message: string, parsed?: unknown): ImportedMcpError {
 function buildResult(
   name: string | undefined,
   type: 'local' | 'remote',
-  raw: Record<string, unknown>,
+  raw: JsonObject,
 ): ImportedMcpResult {
   const command: string[] = buildCommand(raw);
-  const url = typeof raw.url === 'string' ? raw.url.trim() : '';
+  const urlValue = asString(raw.url);
+  const url = urlValue !== null ? urlValue.trim() : '';
 
   const environment = buildEnv(raw, 'env', 'environment');
   const headers = buildEnv(raw, 'headers');
 
   // OAuth is snake_case in v2 and camelCase in v1; both spellings are read.
-  const oauth = isObject(raw.oauth) ? raw.oauth : null;
+  const oauth = asJsonObject(raw.oauth);
   const oauthClientId = readString(oauth, 'client_id', 'clientId');
   const oauthClientSecret = readString(oauth, 'client_secret', 'clientSecret');
   const oauthScope = readString(oauth, 'scope');
   const oauthRedirectUri = readString(oauth, 'redirect_uri', 'redirectUri');
   const oauthCallbackPort = readNumeric(oauth, 'callback_port', 'callbackPort');
   const oauthAuthServerMetadataUrl = readString(oauth, 'auth_server_metadata_url', 'authServerMetadataUrl');
-  const oauthEnabled = raw.oauth === false || raw.oauth === null || raw.oauth === undefined
+  const oauthEnabled = raw.oauth === false || raw.oauth === null
     ? false
-    : Boolean(oauth) && Boolean(
+    : oauth !== null && Boolean(
       oauthClientId || oauthClientSecret || oauthScope || oauthRedirectUri || oauthCallbackPort || oauthAuthServerMetadataUrl,
     );
 
@@ -96,17 +138,17 @@ function buildResult(
 }
 
 /** First of the given keys that holds a non-empty string. */
-function readString(source: Record<string, unknown> | null, ...keys: string[]): string {
+function readString(source: JsonObject | null, ...keys: string[]): string {
   if (!source) return '';
   for (const key of keys) {
-    const value = source[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
+    const text = asString(source[key]);
+    if (text !== null && text.trim()) return text.trim();
   }
   return '';
 }
 
 /** First of the given keys that reads as a positive whole number. */
-function readNumeric(source: Record<string, unknown> | null, ...keys: string[]): string {
+function readNumeric(source: JsonObject | null, ...keys: string[]): string {
   if (!source) return '';
   for (const key of keys) {
     const parsed = positiveInteger(source[key]);
@@ -115,54 +157,63 @@ function readNumeric(source: Record<string, unknown> | null, ...keys: string[]):
   return '';
 }
 
-function positiveInteger(value: unknown): string {
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return String(Math.floor(value));
+function positiveInteger(value: JsonValue): string {
+  const numeric = asNumber(value);
+  if (numeric !== null && Number.isFinite(numeric) && numeric > 0) {
+    return String(Math.floor(numeric));
   }
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number(value);
+  const text = asString(value);
+  if (text !== null && text.trim()) {
+    const parsed = Number(text);
     if (Number.isFinite(parsed) && parsed > 0) return String(Math.floor(parsed));
   }
   return '';
 }
 
-function buildCommand(raw: Record<string, unknown>): string[] {
+function buildCommand(raw: JsonObject): string[] {
   const cmd = raw.command;
   const args = raw.args;
+  const cmdArray = asStringArray(cmd);
+  const argsArray = asStringArray(args);
 
-  if (stringArray(cmd) && stringArray(args)) {
-    return [...cmd, ...args];
+  if (cmdArray && argsArray) {
+    return [...cmdArray, ...argsArray];
   }
-  if (stringArray(cmd)) {
-    return cmd;
+  if (cmdArray) {
+    return cmdArray;
   }
-  if (typeof cmd === 'string' && cmd.trim()) {
-    const parts = cmd.trim().split(/\s+/);
-    if (stringArray(args)) {
-      return [...parts, ...args];
+  const cmdText = asString(cmd);
+  if (cmdText !== null && cmdText.trim()) {
+    const parts = cmdText.trim().split(/\s+/);
+    if (argsArray) {
+      return [...parts, ...argsArray];
     }
     return parts;
   }
-  if (stringArray(args)) {
-    return args;
+  if (argsArray) {
+    return argsArray;
   }
 
   return [];
 }
 
 function buildEnv(
-  raw: Record<string, unknown>,
+  raw: JsonObject,
   ...keys: string[]
 ): Array<{ key: string; value: string }> {
   for (const key of keys) {
-    const val = raw[key];
-    if (!isObject(val)) continue;
+    const val = asJsonObject(raw[key]);
+    if (!val) continue;
 
-    const entries = Object.entries(val as Record<string, unknown>).filter(
-      ([k, v]) => k && typeof v === 'string',
-    );
+    const entries: Array<{ key: string; value: string }> = [];
+    for (const [k, v] of Object.entries(val)) {
+      if (!k) continue;
+      const text = asString(v);
+      if (text === null) continue;
+      entries.push({ key: k, value: text });
+    }
     if (entries.length > 0) {
-      return entries.map(([k, v]) => ({ key: k, value: String(v) }));
+      return entries;
     }
   }
   return [];
@@ -172,12 +223,13 @@ function buildEnv(
  * v2 splits the timeout by phase; a v1 paste carries one number, which stood
  * for the whole request, so it lands on `execution`.
  */
-function buildTimeouts(raw: Record<string, unknown>): { startup: string; catalog: string; execution: string } {
-  if (isObject(raw.timeout)) {
+function buildTimeouts(raw: JsonObject) {
+  const timeout = asJsonObject(raw.timeout);
+  if (timeout) {
     return {
-      startup: positiveInteger(raw.timeout.startup),
-      catalog: positiveInteger(raw.timeout.catalog),
-      execution: positiveInteger(raw.timeout.execution),
+      startup: positiveInteger(timeout.startup),
+      catalog: positiveInteger(timeout.catalog),
+      execution: positiveInteger(timeout.execution),
     };
   }
   return { startup: '', catalog: '', execution: positiveInteger(raw.timeout) };
@@ -187,7 +239,7 @@ function buildTimeouts(raw: Record<string, unknown>): { startup: string; catalog
  * v2 uses `disabled`; a v1 paste says `enabled`. When neither is present the
  * server is active, which is what both versions mean by an absent flag.
  */
-function buildDisabled(raw: Record<string, unknown>): boolean {
+function buildDisabled(raw: JsonObject): boolean {
   if (raw.disabled === true) return true;
   if (raw.disabled === false) return false;
   if ('enabled' in raw) return !raw.enabled;
@@ -199,32 +251,17 @@ function buildDisabled(raw: Record<string, unknown>): boolean {
  * Returns null if the shape does not contain exactly one identifiable server.
  */
 function extractSingleServer(
-  obj: Record<string, unknown>,
-): { name: string; entry: Record<string, unknown> } | null {
-  const mcpServers = obj.mcpServers;
-  if (isObject(mcpServers)) {
-    const keys = Object.keys(mcpServers);
-    if (keys.length === 1) {
-      const name = keys[0]!;
-      const entry = mcpServers[name];
-      if (isObject(entry)) {
-        return { name, entry };
-      }
-    }
-    if (keys.length > 1) {
-      return null;
-    }
-  }
-
+  obj: JsonObject,
+): { name: string; entry: JsonObject } | null {
   const serverKeys = Object.keys(obj).filter((k) => {
-    const v = obj[k];
-    return k !== 'mcpServers' && isObject(v);
+    if (k === 'mcpServers') return false;
+    return asJsonObject(obj[k]) !== null;
   });
 
   if (serverKeys.length === 1) {
     const name = serverKeys[0]!;
-    const entry = obj[name] as Record<string, unknown>;
-    if (isServerConfig(entry)) {
+    const entry = asJsonObject(obj[name]);
+    if (entry && isServerConfig(entry)) {
       return { name, entry };
     }
   }
@@ -232,12 +269,12 @@ function extractSingleServer(
   return null;
 }
 
-function isServerConfig(val: Record<string, unknown>): boolean {
+function isServerConfig(val: JsonObject): boolean {
   return (
     val.type === 'local' ||
     val.type === 'remote' ||
     Array.isArray(val.command) ||
-    typeof val.url === 'string' ||
+    asString(val.url) !== null ||
     Array.isArray(val.args)
   );
 }
@@ -259,28 +296,27 @@ export function parseImportedMcpSnippet(
   raw: string,
   options?: { fallbackName?: string },
 ): ImportedMcpOutcome {
-  let parsed: unknown;
+  let parsed: JsonValue;
   try {
     const trimmed = raw.trim();
     if (!trimmed) {
       return buildError('No JSON content provided');
     }
-    parsed = JSON.parse(trimmed);
+    parsed = jsonValueSchema.parse(JSON.parse(trimmed));
   } catch (err) {
     return buildError(
       err instanceof Error ? `Invalid JSON: ${err.message}` : 'Invalid JSON',
     );
   }
 
-  if (!isObject(parsed)) {
+  const obj = asJsonObject(parsed);
+  if (!obj) {
     return buildError('Expected a JSON object, not an array or primitive');
   }
 
-  const obj = parsed as Record<string, unknown>;
-
   // Detect single named entry inside { "mcpServers": { "name": { ... } } }
-  const mcpServers = obj.mcpServers;
-  if (isObject(mcpServers)) {
+  const mcpServers = asJsonObject(obj.mcpServers);
+  if (mcpServers) {
     const keys = Object.keys(mcpServers);
     if (keys.length === 0) {
       return buildError('mcpServers object is empty', parsed);
@@ -294,20 +330,19 @@ export function parseImportedMcpSnippet(
       );
     }
     const serverName = keys[0]!;
-    const entry = mcpServers[serverName];
-    if (!isObject(entry)) {
+    const entry = asJsonObject(mcpServers[serverName]);
+    if (!entry) {
       return buildError('Server entry is not a valid object', parsed);
     }
-    return buildResult(serverName, inferType(entry as Record<string, unknown>), entry as Record<string, unknown>);
+    return buildResult(serverName, inferType(entry), entry);
   }
 
   // v2 config shape { "mcp": { "servers": { "name": { ... } } } }, and the v1
   // shape { "mcp": { "name": { ... } } } it replaced.
-  const mcpSection = obj.mcp;
-  const mcp = isObject(mcpSection) && isObject(mcpSection.servers)
-    ? mcpSection.servers
-    : mcpSection;
-  if (isObject(mcp)) {
+  const mcpSection = asJsonObject(obj.mcp);
+  const mcpServersSection = mcpSection ? asJsonObject(mcpSection.servers) : null;
+  const mcp = mcpServersSection ?? mcpSection;
+  if (mcp) {
     const keys = Object.keys(mcp);
     if (keys.length === 0) {
       return buildError('mcp object is empty', parsed);
@@ -321,11 +356,11 @@ export function parseImportedMcpSnippet(
       );
     }
     const serverName = keys[0]!;
-    const entry = mcp[serverName];
-    if (!isObject(entry)) {
+    const entry = asJsonObject(mcp[serverName]);
+    if (!entry) {
       return buildError('Server entry in mcp is not a valid object', parsed);
     }
-    return buildResult(serverName, inferType(entry as Record<string, unknown>), entry as Record<string, unknown>);
+    return buildResult(serverName, inferType(entry), entry);
   }
 
   // Detect single named entry { "serverName": { ... } }
@@ -341,8 +376,9 @@ export function parseImportedMcpSnippet(
   // Treat top-level as a bare server config
   if (isServerConfig(obj)) {
     const type = inferType(obj);
-    const name = typeof obj.name === 'string' && obj.name.trim()
-      ? obj.name.trim()
+    const rawName = asString(obj.name);
+    const name = rawName !== null && rawName.trim()
+      ? rawName.trim()
       : options?.fallbackName;
     return buildResult(name, type, obj);
   }
@@ -353,11 +389,12 @@ export function parseImportedMcpSnippet(
   );
 }
 
-function inferType(entry: Record<string, unknown>): 'local' | 'remote' {
+function inferType(entry: JsonObject): 'local' | 'remote' {
   if (entry.type === 'remote') return 'remote';
   if (entry.type === 'local') return 'local';
-  if (typeof entry.url === 'string' && entry.url.trim()) return 'remote';
-  if (Array.isArray(entry.command) || typeof entry.command === 'string') return 'local';
+  const url = asString(entry.url);
+  if (url !== null && url.trim()) return 'remote';
+  if (Array.isArray(entry.command) || asString(entry.command) !== null) return 'local';
   if (Array.isArray(entry.args)) return 'local';
   return 'local';
 }

@@ -1,5 +1,6 @@
 import { carriesFileDiffs, isEditTool, isPatchTool, isWriteTool } from '@/lib/opencode/tools';
 import { parsePatchFiles } from '@pierre/diffs';
+import { z } from 'zod';
 
 import { isToolDiffPreviewOversized } from './toolDiffPreview';
 
@@ -18,8 +19,59 @@ const GIT_DIFF_FILE_BREAK_TEST = /^diff --git\s+/m;
 const UNIFIED_DIFF_FILE_BREAK_PATTERN = /(?=^---\s+\S)/gm;
 const UNIFIED_DIFF_FILE_BREAK_TEST = /^---\s+\S/m;
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === 'object' && value !== null;
+/** A text field that tolerates a missing or malformed value by becoming undefined. */
+const optionalText = z.string().optional().catch(undefined);
+
+/**
+ * One `metadata.files` entry. v2 reports `file` (FileDiff.Info); `movePath`,
+ * `filePath` and `relativePath` keep MCP and plugin tools that use the older
+ * naming working. Malformed fields drop to undefined rather than failing the
+ * whole entry, so one bad key cannot hide the rest of a file.
+ */
+const patchFileSchema = z.object({
+    file: optionalText,
+    movePath: optionalText,
+    filePath: optionalText,
+    relativePath: optionalText,
+    patch: optionalText,
+    diff: optionalText,
+    type: optionalText,
+    status: optionalText,
+});
+
+type PatchFile = z.infer<typeof patchFileSchema>;
+
+const metadataSchema = z
+    .object({
+        files: z.array(patchFileSchema.nullable().catch(null)).optional().catch(undefined),
+        patch: optionalText,
+        diff: optionalText,
+        filediff: z
+            .object({ patch: optionalText, diff: optionalText })
+            .nullable()
+            .catch(null)
+            .optional()
+            .catch(undefined),
+    })
+    .catch({});
+
+type ParsedMetadata = z.infer<typeof metadataSchema>;
+
+const inputPathSchema = z
+    .object({ path: optionalText, filePath: optionalText, file_path: optionalText })
+    .catch({});
+
+/**
+ * Tool metadata and input cross an untyped wire boundary, so each reader below
+ * decodes the fields it understands with these schemas. The parameters stay
+ * generic because callers hold the raw `Record<string, unknown>` from the part
+ * state; decoding is what turns that into a domain value.
+ */
+const parseMetadata = <TMetadata>(metadata: TMetadata): ParsedMetadata => metadataSchema.parse(metadata ?? {});
+
+const readMetadataFiles = <TMetadata>(metadata: TMetadata): PatchFile[] => {
+    const files = parseMetadata(metadata).files ?? [];
+    return files.filter((file): file is PatchFile => file !== null);
 };
 
 const normalizePatchText = (patch: string): string => {
@@ -129,59 +181,51 @@ const normalizeLooseUnifiedPatch = (patch: string): string => {
     return recountUnifiedHunkHeaders(normalizeLooseUnifiedHunkBody(normalizeBareUnifiedHeaderLines(normalizePatchText(patch))));
 };
 
-export const getPatchText = (value: unknown): string | undefined => {
-    if (typeof value === 'string') {
-        return /\S/.test(value) ? value : undefined;
+/**
+ * Reads a patch out of a raw value: a string is the patch itself, an object
+ * carries it under `patch`. Anything else answers undefined.
+ */
+export const getPatchText = <TValue>(value: TValue): string | undefined => {
+    const direct = z.string().safeParse(value);
+    if (direct.success) {
+        return /\S/.test(direct.data) ? direct.data : undefined;
     }
 
-    if (isRecord(value)) {
-        const patch = value.patch;
-        if (typeof patch === 'string') {
-            return /\S/.test(patch) ? patch : undefined;
-        }
+    const nested = z.object({ patch: z.string() }).safeParse(value);
+    if (!nested.success) {
+        return undefined;
     }
 
-    return undefined;
+    return /\S/.test(nested.data.patch) ? nested.data.patch : undefined;
 };
 
-export const getApplyPatchFilePath = (file: unknown): string | null => {
-    if (!isRecord(file)) {
+/** The path a `metadata.files` entry points at, decoded from the raw entry. */
+export const getApplyPatchFilePath = <TFile>(file: TFile): string | null => {
+    const parsed = patchFileSchema.safeParse(file);
+    if (!parsed.success) {
         return null;
     }
 
     // v2 reports `file` (FileDiff.Info); the other keys keep MCP and plugin
     // tools that use the older naming working.
-    return typeof file.file === 'string'
-        ? file.file
-        : typeof file.movePath === 'string'
-            ? file.movePath
-            : typeof file.filePath === 'string'
-                ? file.filePath
-                : typeof file.relativePath === 'string'
-                    ? file.relativePath
-                    : null;
+    const { file: primary, movePath, filePath, relativePath } = parsed.data;
+    return primary ?? movePath ?? filePath ?? relativePath ?? null;
 };
 
 /** v2 file tools report `path`; the other keys cover MCP and plugin tools. */
-const readInputPath = (input: Record<string, unknown> | undefined): string | null => (
-    typeof input?.path === 'string'
-        ? input.path
-        : typeof input?.filePath === 'string'
-            ? input.filePath
-            : typeof input?.file_path === 'string'
-                ? input.file_path
-                : null
-);
+const readInputPath = <TInput>(input: TInput): string | null => {
+    const parsed = inputPathSchema.parse(input ?? {});
+    return parsed.path ?? parsed.filePath ?? parsed.file_path ?? null;
+};
 
-export const getPrimaryToolPath = (
+export const getPrimaryToolPath = <TInput, TMetadata>(
     toolName: string,
-    input: Record<string, unknown> | undefined,
-    metadata: Record<string, unknown> | undefined,
+    input: TInput,
+    metadata: TMetadata,
 ): string | null => {
     if (isPatchTool(toolName)) {
-        const files = Array.isArray(metadata?.files) ? metadata.files : [];
-        for (const file of files) {
-            if (isRecord(file) && file.type !== 'delete' && file.status !== 'deleted') {
+        for (const file of readMetadataFiles(metadata)) {
+            if (file.type !== 'delete' && file.status !== 'deleted') {
                 const filePath = getApplyPatchFilePath(file);
                 if (filePath) {
                     return filePath;
@@ -192,8 +236,7 @@ export const getPrimaryToolPath = (
     }
 
     if (isEditTool(toolName)) {
-        const files = Array.isArray(metadata?.files) ? metadata.files : [];
-        const first = files.find((file) => isRecord(file));
+        const first = readMetadataFiles(metadata)[0];
         const fromMetadata = first ? getApplyPatchFilePath(first) : null;
         return fromMetadata ?? readInputPath(input);
     }
@@ -209,47 +252,47 @@ export const getPrimaryToolPath = (
 const supportsDiffMetadata = (toolName: string): boolean => carriesFileDiffs(toolName);
 
 const getMetadataFileForPath = (
-    metadata: Record<string, unknown>,
+    parsed: ParsedMetadata,
     preferredPath?: string,
-): Record<string, unknown> | undefined => {
-    const files = Array.isArray(metadata.files) ? metadata.files : [];
+): PatchFile | undefined => {
+    const files = (parsed.files ?? []).filter((file): file is PatchFile => file !== null);
     if (!preferredPath) {
-        const first = files[0];
-        return isRecord(first) ? first : undefined;
+        return files[0];
     }
 
-    return files.find((file): file is Record<string, unknown> => (
-        isRecord(file)
-        && (file.file === preferredPath
-            || file.relativePath === preferredPath
-            || file.filePath === preferredPath
-            || file.movePath === preferredPath)
+    return files.find((file) => (
+        file.file === preferredPath
+        || file.relativePath === preferredPath
+        || file.filePath === preferredPath
+        || file.movePath === preferredPath
     ));
 };
 
-export const getPrimaryDiffFromMetadata = (
+export const getPrimaryDiffFromMetadata = <TMetadata>(
     toolName: string,
-    metadata?: Record<string, unknown>,
+    metadata?: TMetadata,
     preferredPath?: string,
 ): string | undefined => {
-    if (!metadata || !supportsDiffMetadata(toolName)) {
+    if (metadata === undefined || !supportsDiffMetadata(toolName)) {
         return undefined;
     }
 
-    const matchedFile = getMetadataFileForPath(metadata, preferredPath);
+    const parsed = parseMetadata(metadata);
+    const matchedFile = getMetadataFileForPath(parsed, preferredPath);
     const filePatch = getPatchText(matchedFile?.patch) ?? getPatchText(matchedFile?.diff);
     if (filePatch) {
         return filePatch;
     }
 
-    return getPatchText(metadata.patch) ?? getPatchText(metadata.diff);
+    return getPatchText(parsed.patch) ?? getPatchText(parsed.diff);
 };
 
 /** Top-level patch a tool card falls back to when metadata carries no per-file entries. */
-export const getToolFallbackDiff = (metadata: Record<string, unknown> | undefined): string | undefined => {
-    const fileDiff = isRecord(metadata?.filediff) ? metadata.filediff : undefined;
-    return getPatchText(metadata?.patch)
-        ?? getPatchText(metadata?.diff)
+export const getToolFallbackDiff = <TMetadata>(metadata: TMetadata): string | undefined => {
+    const parsed = parseMetadata(metadata);
+    const fileDiff = parsed.filediff ?? undefined;
+    return getPatchText(parsed.patch)
+        ?? getPatchText(parsed.diff)
         ?? getPatchText(fileDiff?.patch)
         ?? getPatchText(fileDiff?.diff);
 };
@@ -290,17 +333,19 @@ export const extractFirstChangedLineFromDiff = (diffText: string): number | unde
     return firstHunkStart;
 };
 
-export const getFirstChangedLineFromMetadata = (
+export const getFirstChangedLineFromMetadata = <TMetadata>(
     toolName: string,
-    metadata?: Record<string, unknown>,
+    metadata?: TMetadata,
     preferredPath?: string,
 ): number | undefined => {
-    if (!metadata || !supportsDiffMetadata(toolName)) {
+    if (metadata === undefined || !supportsDiffMetadata(toolName)) {
         return undefined;
     }
 
+    const parsed = parseMetadata(metadata);
+
     if (preferredPath) {
-        const matchedFile = getMetadataFileForPath(metadata, preferredPath);
+        const matchedFile = getMetadataFileForPath(parsed, preferredPath);
         const matchedPatch = getPatchText(matchedFile?.patch) ?? getPatchText(matchedFile?.diff);
         if (matchedPatch) {
             const matchedLine = extractFirstChangedLineFromDiff(matchedPatch);
@@ -310,7 +355,7 @@ export const getFirstChangedLineFromMetadata = (
         }
     }
 
-    const topLevelPatch = getPatchText(metadata.patch) ?? getPatchText(metadata.diff);
+    const topLevelPatch = getPatchText(parsed.patch) ?? getPatchText(parsed.diff);
     if (topLevelPatch) {
         const topLevelLine = extractFirstChangedLineFromDiff(topLevelPatch);
         if (topLevelLine !== undefined) {
@@ -318,7 +363,7 @@ export const getFirstChangedLineFromMetadata = (
         }
     }
 
-    const firstFile = getMetadataFileForPath(metadata);
+    const firstFile = getMetadataFileForPath(parsed);
     const firstPatch = getPatchText(firstFile?.patch) ?? getPatchText(firstFile?.diff);
     return firstPatch ? extractFirstChangedLineFromDiff(firstPatch) : undefined;
 };
@@ -329,10 +374,10 @@ export const getFirstChangedLineFromMetadata = (
  * the expanded "open file" button resolve their line from the same entry
  * patch, so they always land on the same line.
  */
-export const resolveToolQuickOpenTarget = (
+export const resolveToolQuickOpenTarget = <TInput, TMetadata>(
     toolName: string,
-    input: Record<string, unknown> | undefined,
-    metadata: Record<string, unknown> | undefined,
+    input: TInput,
+    metadata: TMetadata,
 ): { filePath: string; line?: number; patch?: string } | null => {
     const filePath = getPrimaryToolPath(toolName, input, metadata);
     if (!filePath) {
@@ -506,21 +551,13 @@ const getPatchEntriesFromText = (
     }];
 };
 
-const getFilePatch = (file: unknown): { filePath?: string; patch: string; title: string } | null => {
-    if (!isRecord(file)) {
-        return null;
-    }
-
+const getFilePatch = (file: PatchFile): { filePath?: string; patch: string; title: string } | null => {
     const patch = getPatchText(file.patch) ?? getPatchText(file.diff);
     if (!patch) {
         return null;
     }
 
-    const rawPath = typeof file.relativePath === 'string'
-        ? file.relativePath
-        : typeof file.filePath === 'string'
-            ? file.filePath
-            : '';
+    const rawPath = file.relativePath ?? file.filePath ?? '';
 
     return {
         filePath: getApplyPatchFilePath(file) ?? undefined,
@@ -529,13 +566,12 @@ const getFilePatch = (file: unknown): { filePath?: string; patch: string; title:
     };
 };
 
-export const getDiffPatchEntries = (
-    metadata: Record<string, unknown> | undefined,
+export const getDiffPatchEntries = <TMetadata>(
+    metadata: TMetadata,
     fallbackDiff: string | undefined,
     resolveTitle: (path: string) => string,
 ): DiffPatchEntry[] => {
-    const files = Array.isArray(metadata?.files) ? metadata.files : [];
-    const fileEntries = files.flatMap((file, index) => {
+    const fileEntries = readMetadataFiles(metadata).flatMap((file, index) => {
         const filePatch = getFilePatch(file);
         if (!filePatch) {
             return [];
@@ -552,6 +588,6 @@ export const getDiffPatchEntries = (
         return fileEntries;
     }
 
-    const diff = typeof fallbackDiff === 'string' ? fallbackDiff : '';
+    const diff = fallbackDiff ?? '';
     return getPatchEntriesFromText(diff, 'Diff', 'fallback', resolveTitle);
 };

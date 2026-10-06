@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test"
+import type { StateCreator, StoreApi } from "zustand/vanilla"
+import type { Metadata } from "@/lib/opencode/model"
 import { cyclePermissionMode } from "../../../../src/components/chat/permissionAutoAccept"
 
 const storage = new Map<string, string>()
-const createSessionCalls: Array<{ title?: string; directory: string | null; metadata?: unknown }> = []
+const createSessionCalls: Array<{ title?: string; directory: string | null; metadata?: Metadata }> = []
 const permissionAutoAcceptCalls: Array<[string, string]> = []
 const savedVariantCalls: Array<string | undefined> = []
 const savedAgentModelCalls: Array<[string, string, string, string]> = []
@@ -21,40 +23,58 @@ const createdWorktreeProjects: Array<{ id: string; path: string }> = []
 // resolution reads it as the authoritative source, so the mock has to keep one.
 const sessionDirectoryRegistry = new Map<string, string>()
 let createdSessionDirectory: string | undefined
-const projectsState = {
-  projects: [] as Array<{
-    id: string
-    path: string
-    defaultAgent?: string | null
-    defaultModel?: string | null
-    defaultVariant?: string | null
-  }>,
-  activeProjectId: null as string | null,
+type MockProject = {
+  id: string
+  path: string
+  defaultAgent?: string | null
+  defaultModel?: string | null
+  defaultVariant?: string | null
+}
+type ProjectsState = {
+  projects: MockProject[]
+  activeProjectId: string | null
+  setActiveProjectIdOnly: (projectId: string | null) => void
+  getActiveProject: () => MockProject | null
+}
+const projectsState: ProjectsState = {
+  projects: [],
+  activeProjectId: null,
   setActiveProjectIdOnly: (projectId: string | null) => {
     projectsState.activeProjectId = projectId
   },
-  getActiveProject: () => null as {
-    id: string
-    path: string
-    defaultAgent?: string | null
-    defaultModel?: string | null
-    defaultVariant?: string | null
-  } | null,
+  getActiveProject: () => null,
 }
 
-const getMockCalls = (fn: unknown): unknown[][] => ((fn as { mock?: { calls: unknown[][] } }).mock?.calls ?? [])
+// Recorded call arguments for a bun:test mock. The declared `Mock<T>` in the
+// local bun:test shim omits the runtime `mock` recorder, so the helper views a
+// mock structurally and reads the arguments the callers actually passed.
+type RecordedMockCall = string[]
+type RecordedMock = {
+  (...args: string[]): void
+  mock?: { calls: RecordedMockCall[] }
+}
+const getMockCalls = (fn: RecordedMock): RecordedMockCall[] => fn.mock?.calls ?? []
+
+// Minimal zustand replacement. It mirrors the vanilla store contract the sync
+// stores use: the initializer receives set/get/api, and the returned store is
+// callable as a selector with getState/setState/subscribe attached.
+type MockZustandStore<T> = {
+  (): T
+  <U>(selector: (state: T) => U): U
+  getState: () => T
+  setState: StoreApi<T>["setState"]
+  subscribe: (listener: (state: T, prevState: T) => void) => () => void
+}
 
 mock.module("zustand", () => ({
-  create: () => (initializer: (
-    set: (patch: unknown | ((state: unknown) => unknown)) => void,
-    get: () => unknown,
-    api?: unknown,
-  ) => Record<string, unknown>) => {
-    let state: Record<string, unknown>
-    const get = () => state
-    const set = (patch: unknown | ((current: Record<string, unknown>) => unknown)) => {
-      const next = typeof patch === "function" ? patch(state) : patch
-      state = next && typeof next === "object" ? { ...state, ...(next as Record<string, unknown>) } : state
+  create: <T extends object>() => (initializer: StateCreator<T, [], []>): MockZustandStore<T> => {
+    let state: T
+    const get = (): T => state
+    const set: StoreApi<T>["setState"] = (partial) => {
+      const next = typeof partial === "function" ? partial(state) : partial
+      if (next && typeof next === "object") {
+        state = { ...state, ...next }
+      }
     }
 
     state = initializer(set, get, {
@@ -62,21 +82,19 @@ mock.module("zustand", () => ({
       getState: get,
       getInitialState: get,
       subscribe: () => () => undefined,
-    } as never)
+    })
 
-    const store = ((selector?: (current: Record<string, unknown>) => unknown) => (
-      typeof selector === "function" ? selector(state) : state
-    )) as unknown as {
-      getState: () => Record<string, unknown>
-      setState: (patch: unknown | ((current: Record<string, unknown>) => unknown)) => void
-      subscribe: () => () => void
+    function store(): T
+    function store<U>(selector: (state: T) => U): U
+    function store<U>(selector?: (state: T) => U): T | U {
+      return selector ? selector(state) : state
     }
 
-    store.getState = () => state
-    store.setState = (patch) => set(patch)
-    store.subscribe = () => () => undefined
-
-    return store
+    return Object.assign(store, {
+      getState: () => state,
+      setState: set,
+      subscribe: () => () => undefined,
+    })
   },
 }))
 
@@ -322,7 +340,7 @@ mock.module("../../../../src/sync/session-actions", () => ({
   createSession: mock(async (
     title: string | undefined,
     directory: string | null,
-    metadata?: unknown,
+    metadata?: Metadata,
     selectionTransition?: "submitted-draft",
   ) => {
     createSessionCalls.push({ title, directory, metadata })

@@ -237,32 +237,29 @@ const resolveDefaultSelection = ({ agents, models, settings, projectDefaults, op
  */
 const applySessionSelection = async ({ client, sessionID, model, agent, variant }) => {
   if (model) {
-    await client.session.switchModel({
-      sessionID,
-      model: { id: model.modelID, providerID: model.providerID, ...(variant ? { variant } : {}) },
-    });
+    const selection = { id: model.modelID, providerID: model.providerID };
+    if (variant) selection.variant = variant;
+    await client.session.switchModel({ sessionID, model: selection });
   }
   if (agent) await client.session.switchAgent({ sessionID, agent });
 };
 
 const createSession = async ({ client, directory, title }) => {
-  const session = await client.session.create({
-    location: { directory },
-    ...(title ? { title } : {}),
-  });
+  const request = { location: { directory } };
+  if (title) request.title = title;
+  const session = await client.session.create(request);
   const sessionID = asNonEmptyString(session?.id);
   if (!sessionID) throw new Error('failed to create session');
   return sessionID;
 };
 
 const forkSession = async ({ client, sessionID, messageID }) => {
-  const session = await client.session.fork({
-    sessionID,
-    // OpenCode 2.0.8 replaced the SessionForkBoundary object with an optional
-    // `before` message id. Omitting it carries the whole session over, which is
-    // what the old `{ type: 'through' }` boundary meant.
-    ...(messageID ? { before: messageID } : {}),
-  });
+  const request = { sessionID };
+  // OpenCode 2.0.8 replaced the SessionForkBoundary object with an optional
+  // `before` message id. Omitting it carries the whole session over, which is
+  // what the old `{ type: 'through' }` boundary meant.
+  if (messageID) request.before = messageID;
+  const session = await client.session.fork(request);
   if (!asNonEmptyString(session?.id)) throw new Error('failed to fork session');
   return session;
 };
@@ -371,7 +368,9 @@ const resolveRequestedDirectory = async ({ payload, readSettingsFromDiskMigrated
     const { root } = await resolvePrimaryWorktreeRoot(validated.directory);
     project = projects.find((entry) => entry.path === root);
   }
-  return { ok: true, directory: validated.directory, ...(project ? { projectId: project.id } : {}) };
+  const result = { ok: true, directory: validated.directory };
+  if (project) result.projectId = project.id;
+  return result;
 };
 
 // createWorktree returns while the worktree is still being populated in the
@@ -389,13 +388,11 @@ const resolveWorktreeInput = (payload) => {
   if (!name) return null;
   const branchName = asNonEmptyString(payload.worktree.branchName);
   const startRef = asNonEmptyString(payload.worktree.startRef);
-  return {
-    mode: 'new',
-    name,
-    ...(branchName ? { branchName } : {}),
-    ...(startRef ? { startRef } : {}),
-    ...(typeof payload.setUpstream === 'boolean' ? { setUpstream: payload.setUpstream } : {}),
-  };
+  const worktreeInput = { mode: 'new', name };
+  if (branchName) worktreeInput.branchName = branchName;
+  if (startRef) worktreeInput.startRef = startRef;
+  if (typeof payload.setUpstream === 'boolean') worktreeInput.setUpstream = payload.setUpstream;
+  return worktreeInput;
 };
 
 export const createOpenChamberSessionService = (dependencies) => {
@@ -854,11 +851,9 @@ export const createOpenChamberSessionService = (dependencies) => {
     const baseUrl = openCodeBaseUrl();
     const authHeaders = getOpenCodeAuthHeaders();
     const client = clientFor(sessionDirectory);
-    const sessionID = await createSession({
-      client,
-      directory: sessionDirectory,
-      ...(title ? { title } : {}),
-    });
+    const sessionRequest = { client, directory: sessionDirectory };
+    if (title) sessionRequest.title = title;
+    const sessionID = await createSession(sessionRequest);
 
     let dispatch = { model, agent, variant, promptDispatched: false, dispatchedAsCommand: false };
     if (prompt) {
@@ -880,35 +875,38 @@ export const createOpenChamberSessionService = (dependencies) => {
     const result = {
       sessionId: sessionID,
       directory: sessionDirectory,
-      ...(resolvedDirectory.projectId ? { projectId: resolvedDirectory.projectId } : {}),
-      ...(title ? { title } : {}),
-      ...(worktree ? { worktree } : {}),
-      ...(prompt && dispatch.model ? { model: dispatch.model } : {}),
-      ...(prompt && dispatch.agent ? { agent: dispatch.agent } : {}),
-      ...(prompt && dispatch.variant ? { variant: dispatch.variant } : {}),
-      promptDispatched: dispatch.promptDispatched,
-      ...(dispatch.promptError ? { promptError: dispatch.promptError } : {}),
-      dispatchedAsCommand: dispatch.dispatchedAsCommand,
-      ...(goalInput.enabled ? { goalEnabled: true } : {}),
-      ...(goalInput.tokenBudget ? { goalTokenBudget: goalInput.tokenBudget } : {}),
     };
+    if (resolvedDirectory.projectId) result.projectId = resolvedDirectory.projectId;
+    if (title) result.title = title;
+    if (worktree) result.worktree = worktree;
+    if (prompt && dispatch.model) result.model = dispatch.model;
+    if (prompt && dispatch.agent) result.agent = dispatch.agent;
+    if (prompt && dispatch.variant) result.variant = dispatch.variant;
+    result.promptDispatched = dispatch.promptDispatched;
+    if (dispatch.promptError) result.promptError = dispatch.promptError;
+    result.dispatchedAsCommand = dispatch.dispatchedAsCommand;
+    if (goalInput.enabled) result.goalEnabled = true;
+    if (goalInput.tokenBudget) result.goalTokenBudget = goalInput.tokenBudget;
 
     try {
-      emitSessionCreatedEvent?.({
-        sessionID,
-        directory: sessionDirectory,
-        ...(resolvedDirectory.projectId ? { projectID: resolvedDirectory.projectId } : {}),
-        ...(title ? { title } : {}),
-        ...(worktree ? { worktree } : {}),
-        ...(prompt && dispatch.model ? { model: dispatch.model } : {}),
-        ...(prompt && dispatch.agent ? { agent: dispatch.agent } : {}),
-        ...(prompt && dispatch.variant ? { variant: dispatch.variant } : {}),
-        promptDispatched: dispatch.promptDispatched,
-        dispatchedAsCommand: dispatch.dispatchedAsCommand,
-        ...(goalInput.enabled ? { goalEnabled: true } : {}),
-        ...(goalInput.tokenBudget ? { goalTokenBudget: goalInput.tokenBudget } : {}),
-        createdAt: Date.now(),
-      });
+      if (emitSessionCreatedEvent) {
+        const createdEvent = {
+          sessionID,
+          directory: sessionDirectory,
+        };
+        if (resolvedDirectory.projectId) createdEvent.projectID = resolvedDirectory.projectId;
+        if (title) createdEvent.title = title;
+        if (worktree) createdEvent.worktree = worktree;
+        if (prompt && dispatch.model) createdEvent.model = dispatch.model;
+        if (prompt && dispatch.agent) createdEvent.agent = dispatch.agent;
+        if (prompt && dispatch.variant) createdEvent.variant = dispatch.variant;
+        createdEvent.promptDispatched = dispatch.promptDispatched;
+        createdEvent.dispatchedAsCommand = dispatch.dispatchedAsCommand;
+        if (goalInput.enabled) createdEvent.goalEnabled = true;
+        if (goalInput.tokenBudget) createdEvent.goalTokenBudget = goalInput.tokenBudget;
+        createdEvent.createdAt = Date.now();
+        emitSessionCreatedEvent(createdEvent);
+      }
     } catch {
     }
 
@@ -992,36 +990,39 @@ export const createOpenChamberSessionService = (dependencies) => {
         action,
         sessionId: targetSessionID,
         directory,
-        ...(action === 'fork' ? { sourceSessionId: sourceSessionID } : {}),
-        ...(targetSession?.title ? { title: targetSession.title } : {}),
-        ...(baselineAssistantMessageId ? { baselineAssistantMessageId } : {}),
-        ...(baselineIdleRecordId !== undefined ? { baselineIdleRecordId } : {}),
-        model: dispatch.model,
-        ...(dispatch.agent ? { agent: dispatch.agent } : {}),
-        ...(dispatch.variant ? { variant: dispatch.variant } : {}),
-        promptDispatched: dispatch.promptDispatched,
-        ...(dispatch.promptError ? { promptError: dispatch.promptError } : {}),
-        dispatchedAsCommand: dispatch.dispatchedAsCommand,
-        ...(goalInput.enabled ? { goalEnabled: true } : {}),
-        ...(goalInput.tokenBudget ? { goalTokenBudget: goalInput.tokenBudget } : {}),
       };
+      if (action === 'fork') result.sourceSessionId = sourceSessionID;
+      if (targetSession?.title) result.title = targetSession.title;
+      if (baselineAssistantMessageId) result.baselineAssistantMessageId = baselineAssistantMessageId;
+      if (baselineIdleRecordId !== undefined) result.baselineIdleRecordId = baselineIdleRecordId;
+      result.model = dispatch.model;
+      if (dispatch.agent) result.agent = dispatch.agent;
+      if (dispatch.variant) result.variant = dispatch.variant;
+      result.promptDispatched = dispatch.promptDispatched;
+      if (dispatch.promptError) result.promptError = dispatch.promptError;
+      result.dispatchedAsCommand = dispatch.dispatchedAsCommand;
+      if (goalInput.enabled) result.goalEnabled = true;
+      if (goalInput.tokenBudget) result.goalTokenBudget = goalInput.tokenBudget;
 
       if (action === 'fork') {
         try {
-          emitSessionCreatedEvent?.({
-            sessionID: targetSessionID,
-            directory,
-            sourceSessionID,
-            ...(targetSession?.title ? { title: targetSession.title } : {}),
-            model: dispatch.model,
-            ...(dispatch.agent ? { agent: dispatch.agent } : {}),
-            ...(dispatch.variant ? { variant: dispatch.variant } : {}),
-            promptDispatched: dispatch.promptDispatched,
-            dispatchedAsCommand: dispatch.dispatchedAsCommand,
-            ...(goalInput.enabled ? { goalEnabled: true } : {}),
-            ...(goalInput.tokenBudget ? { goalTokenBudget: goalInput.tokenBudget } : {}),
-            createdAt: Date.now(),
-          });
+          if (emitSessionCreatedEvent) {
+            const createdEvent = {
+              sessionID: targetSessionID,
+              directory,
+              sourceSessionID,
+            };
+            if (targetSession?.title) createdEvent.title = targetSession.title;
+            createdEvent.model = dispatch.model;
+            if (dispatch.agent) createdEvent.agent = dispatch.agent;
+            if (dispatch.variant) createdEvent.variant = dispatch.variant;
+            createdEvent.promptDispatched = dispatch.promptDispatched;
+            createdEvent.dispatchedAsCommand = dispatch.dispatchedAsCommand;
+            if (goalInput.enabled) createdEvent.goalEnabled = true;
+            if (goalInput.tokenBudget) createdEvent.goalTokenBudget = goalInput.tokenBudget;
+            createdEvent.createdAt = Date.now();
+            emitSessionCreatedEvent(createdEvent);
+          }
         } catch {
         }
       }
@@ -1030,19 +1031,17 @@ export const createOpenChamberSessionService = (dependencies) => {
       const statusCode = Number(error?.statusCode) || 500;
       const forkCreated = action === 'fork' && targetSessionID !== sourceSessionID;
       const goalConfigured = error?.goalConfigured === true;
+      const details = {};
+      if (forkCreated || goalConfigured) {
+        details.partial = true;
+        details.partialAction = forkCreated ? 'fork-created' : 'goal-configured';
+        details.sessionId = targetSessionID;
+        details.directory = directory;
+      }
       throw new OpenChamberControlError(
         error instanceof Error ? error.message : `Failed to ${action} session`,
         statusCode,
-        {
-        ...(forkCreated || goalConfigured
-          ? {
-            partial: true,
-            partialAction: forkCreated ? 'fork-created' : 'goal-configured',
-            sessionId: targetSessionID,
-            directory,
-          }
-          : {}),
-        },
+        details,
       );
     }
   };
@@ -1077,15 +1076,14 @@ export const createOpenChamberSessionService = (dependencies) => {
 
 const sendServiceError = (res, error, fallback) => {
   const controlError = asControlError(error, fallback);
-  return res.status(controlError.statusCode).json({
-    error: controlError.message,
-    ...(controlError.partial === true ? {
-      partial: true,
-      partialAction: controlError.partialAction,
-      sessionId: controlError.sessionId,
-      directory: controlError.directory,
-    } : {}),
-  });
+  const body = { error: controlError.message };
+  if (controlError.partial === true) {
+    body.partial = true;
+    body.partialAction = controlError.partialAction;
+    body.sessionId = controlError.sessionId;
+    body.directory = controlError.directory;
+  }
+  return res.status(controlError.statusCode).json(body);
 };
 
 export const registerOpenChamberSessionRoutes = (app, dependencies) => {
