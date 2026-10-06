@@ -42,7 +42,7 @@
     "lint:electron": "bun run --cwd packages/electron lint",
     "lint:mobile": "bun run --cwd packages/mobile lint",
     "lint:anti-slop": "oxlint",
-    "test": "node scripts/run-isolated-tests.mjs scripts && bun run --cwd packages/sdk test && bun run --cwd packages/ui test && bun run --cwd packages/vscode test && bun run --cwd packages/electron test && bun run --cwd packages/web test",
+    "test": "node scripts/run-isolated-tests.mjs scripts packages/sdk/tests packages/ui/tests packages/vscode/tests packages/electron/tests && bun run --cwd packages/web test",
     "clean": "node scripts/clean.mjs",
     "hooks:install": "node scripts/hooks/install-hooks.mjs",
     "changelog-card": "node scripts/changelog-card/generate.mjs",

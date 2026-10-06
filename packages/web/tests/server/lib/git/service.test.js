@@ -2100,6 +2100,8 @@ describe('createWorktree with OpenCode worktree.directory', () => {
       worktreeName: 'absolute-tree',
     });
     expect(fs.realpathSync(created.path)).toBe(fs.realpathSync(path.join(target, 'absolute-tree')));
+    await removeWorktree(repo, { directory: created.path });
+    expect(fs.existsSync(created.path)).toBe(false);
   }));
 
   it('falls back to the data-dir folder when the setting is unset', withDataHome(async (dataHome) => {
