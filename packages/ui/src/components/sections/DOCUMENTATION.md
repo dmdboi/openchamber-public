@@ -117,7 +117,7 @@ again, which is what moves it out of `needs_auth`.
 ## Entity shapes: OpenCode 2 only
 
 Every OpenCode entity these pages read and write speaks the v2 shape defined in
-`packages/web/server/lib/opencode/DOCUMENTATION.md`, section "Entity routes (v2
+`packages/api/server/lib/opencode/DOCUMENTATION.md`, section "Entity routes (v2
 shapes)". The server reads v1 files too and rewrites them in place as v2; the UI
 only ever sends v2.
 

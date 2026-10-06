@@ -16,7 +16,7 @@ const repoRoot = resolve(here, '..', '..', '..', '..', '..');
 
 /** Every checked-in copy of the snapshot, relative to the repo root. */
 export const SETTINGS_REGISTRY_SNAPSHOT_PATHS = [
-  'packages/web/server/lib/opencode/settings-registry.json',
+  'packages/api/server/lib/opencode/settings-registry.json',
   'packages/vscode/src/settings-registry.json',
 ] as const;
 

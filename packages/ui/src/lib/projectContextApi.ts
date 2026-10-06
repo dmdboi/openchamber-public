@@ -2,7 +2,7 @@
  * Client for the OpenChamber project context routes.
  *
  * Notes, todos, and plan markdown are owned by the server
- * (`packages/web/server/lib/project-context`). This module only speaks HTTP:
+ * (`packages/api/server/lib/project-context`). This module only speaks HTTP:
  * it resolves no storage paths and never reads plan files directly, so the
  * shared UI has no knowledge of where any of it lives on disk.
  *

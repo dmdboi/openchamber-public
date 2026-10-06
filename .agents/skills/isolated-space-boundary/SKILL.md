@@ -15,7 +15,7 @@ Then load the branch-specific context before editing:
 
 | Change | Required context |
 |---|---|
-| Container restrictions, networks, environment, command or lifecycle | `packages/web/server/lib/spaces/DOCUMENTATION.md`, *Hardening*, *The gatekeeper container*, *Lifecycle*, and the owning section for the changed operation |
+| Container restrictions, networks, environment, command or lifecycle | `packages/api/server/lib/spaces/DOCUMENTATION.md`, *Hardening*, *The gatekeeper container*, *Lifecycle*, and the owning section for the changed operation |
 | Corridor, window, control or journal | The matching section under *The gatekeeper* in the module documentation, including *Known limits* |
 | Exec requests, server token or responses from inside | The module documentation, *Token*, *The exec channel* and *Process rules* |
 | Grants or credentials | DESIGN.md, *Words* and *Gatekeeper*; the module documentation, *Window* and *Control*; STAGES.md's obligation on the first real credential |

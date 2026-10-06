@@ -1,5 +1,5 @@
-import { installOpenCodeV2, supportsOpenCodeV2Install } from '../../web/server/lib/opencode/v2-install.js';
-import { describeOpenCodeCompatibility, readOpenCodeCliVersion, readExternalOpenCodeVersion, readOpenCodeInfo, isSupportedOpenCodeVersion, type OpenCodeCompatibility } from '../../web/server/lib/opencode/compatibility.js';
+import { installOpenCodeV2, supportsOpenCodeV2Install } from '../../api/server/lib/opencode/v2-install.js';
+import { describeOpenCodeCompatibility, readOpenCodeCliVersion, readExternalOpenCodeVersion, readOpenCodeInfo, isSupportedOpenCodeVersion, type OpenCodeCompatibility } from '../../api/server/lib/opencode/compatibility.js';
 import * as vscode from 'vscode';
 import * as os from 'os';
 import * as path from 'path';
@@ -13,9 +13,9 @@ import { reapOrphanedProcesses } from './opencodeProcessRegistry';
 import { applyProviderEnvAliases } from './provider-env-aliases';
 import { checkOpenCodeVersionOutput } from './opencodeVersion';
 import { isSameOpenCodeServer } from './opencodeServiceUrl';
-import { runOpenCodeCliUpgrade } from '../../web/server/lib/opencode/cli-upgrade.js';
+import { runOpenCodeCliUpgrade } from '../../api/server/lib/opencode/cli-upgrade.js';
 import { spawnManagedOpenCodeProcess } from './managed-opencode-process';
-import { readEnterprisePolicy } from '../../web/server/lib/enterprise-mode.js';
+import { readEnterprisePolicy } from '../../api/server/lib/enterprise-mode.js';
 
 const t = vscode.l10n.t;
 

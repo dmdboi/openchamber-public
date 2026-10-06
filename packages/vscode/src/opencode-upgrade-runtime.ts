@@ -1,5 +1,5 @@
-import { readEnterprisePolicy } from '../../web/server/lib/enterprise-mode.js';
-import { resolveNpmRegistryRequest } from '../../web/server/lib/opencode/npm-registry-config.js';
+import { readEnterprisePolicy } from '../../api/server/lib/enterprise-mode.js';
+import { resolveNpmRegistryRequest } from '../../api/server/lib/opencode/npm-registry-config.js';
 
 type UpgradeCapability = {
   supported: boolean;

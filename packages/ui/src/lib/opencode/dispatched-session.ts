@@ -3,7 +3,7 @@
  * dispatching session's transcript sees them.
  *
  * When the dispatched session's turn ends, the OpenChamber server
- * (`web/server/lib/dispatch-results`) appends one synthetic message to the
+ * (`api/server/lib/dispatch-results`) appends one synthetic message to the
  * session that dispatched it and wakes that session. Its metadata names the
  * dispatched session (`source: "openchamber-session"`) and its text wraps the
  * answer in an `<openchamber-session …>` envelope, the way OpenCode reports a

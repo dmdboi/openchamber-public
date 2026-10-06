@@ -148,7 +148,7 @@ export const parseMessageQueueKey = (key: string): MessageQueueTarget | null => 
 };
 
 // ---------------------------------------------------------------------------
-// Server contract (packages/web/server/lib/message-queue)
+// Server contract (packages/api/server/lib/message-queue)
 // ---------------------------------------------------------------------------
 
 const serverSendConfigSchema = z.object({

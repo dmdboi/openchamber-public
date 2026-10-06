@@ -1,0 +1,54 @@
+{
+  "name": "@openchamber/api",
+  "version": "2.1.1",
+  "private": true,
+  "type": "module",
+  "main": "./server/index.js",
+  "types": "./server/index.d.ts",
+  "exports": {
+    ".": "./server/index.js",
+    "./server/*": "./server/*",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "bun ../../scripts/build-builtin-extensions.mjs && node --check server/index.js",
+    "prepack": "bun ../../scripts/build-builtin-extensions.mjs",
+    "type-check": "node --check server/index.js",
+    "lint": "node --check server/index.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@gitbeaker/rest": "43.8.0",
+    "@octokit/rest": "^22.0.1",
+    "@openchamber/sdk": "workspace:*",
+    "@openchamber/web": "workspace:*",
+    "@opencode/client": "2.0.23",
+    "@opencode/schema": "2.0.23",
+    "@simplewebauthn/server": "13.3.3",
+    "bun-pty": "^0.4.5",
+    "compression": "^1.8.1",
+    "cron-parser": "^5.10.1",
+    "express": "^5.1.0",
+    "http-proxy-middleware": "^3.0.5",
+    "jose": "^6.1.3",
+    "jsonc-parser": "^3.3.1",
+    "luxon": "^3.5.0",
+    "node-pty": "1.2.0-beta.15",
+    "openai": "^7.18.0",
+    "reflect-metadata": "^0.2.2",
+    "sherpa-onnx-node": "1.12.28",
+    "simple-git": "^3.36.0",
+    "web-push": "^3.6.7",
+    "ws": "^8.18.3",
+    "yaml": "^2.8.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2",
+    "tsx": "^4.20.6",
+    "typescript": "~5.9.0",
+    "vitest": "^4.1.4"
+  }
+}

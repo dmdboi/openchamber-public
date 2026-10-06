@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import * as fromVscode from '../../src/settings-files';
-import * as fromWeb from '../../../web/server/lib/opencode/settings-files.js';
+import * as fromWeb from '../../../api/server/lib/opencode/settings-files.js';
 
 // Every runtime export the canonical module ships. The extension host must
 // re-export the same bindings, not a copy, so the two runtimes cannot drift.

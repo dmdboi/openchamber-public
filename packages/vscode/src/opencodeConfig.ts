@@ -15,7 +15,7 @@ import {
   type JSONPath,
   type ParseError,
 } from 'jsonc-parser';
-import { resolveNpmRegistryRequest } from '../../web/server/lib/opencode/npm-registry-config.js';
+import { resolveNpmRegistryRequest } from '../../api/server/lib/opencode/npm-registry-config.js';
 import {
   toAgentEntity,
   fromAgentEntity,
@@ -1820,7 +1820,7 @@ type ConfigWriteResult = { changed: boolean };
 
 /**
  * Mirror of the web server's `setWebSearchSelection`
- * (`packages/web/server/lib/opencode/websearch-config.js`): the `websearch`
+ * (`packages/api/server/lib/opencode/websearch-config.js`): the `websearch`
  * choice goes to `OPENCODE_CONFIG` when set, else the user's global config.
  */
 export const setWebSearchSelection = (selection: WebSearchSelection): ConfigWriteResult => {

@@ -16,7 +16,7 @@ import { normalizeWindowsDriveLetter, pathsEqualWithNormalizedDriveLetter } from
 import { resolveWorkspaceFolders } from './workspaceResolver';
 import { reconstructOriginalContentFromPatch } from './patchReconstruction';
 import type { BridgeContext, BridgeResponse } from './bridge';
-import { ENTERPRISE_MODE_ERROR, isEnterpriseMode, publicEnterprisePolicy } from '../../web/server/lib/enterprise-mode.js';
+import { ENTERPRISE_MODE_ERROR, isEnterpriseMode, publicEnterprisePolicy } from '../../api/server/lib/enterprise-mode.js';
 import { discoverProviderModels } from './model-discovery';
 
 /** The base URL a custom provider was saved with; discovery sends its stored key only there. */

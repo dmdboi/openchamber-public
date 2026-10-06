@@ -1,6 +1,6 @@
 /**
  * Client for the OpenChamber routing routes. The server owns the
- * configuration and the Jev key (`packages/web/server/lib/routing`); this
+ * configuration and the Jev key (`packages/api/server/lib/routing`); this
  * module speaks HTTP and parses what comes back.
  *
  * Every function throws on failure. A 404 means the build has no routing at

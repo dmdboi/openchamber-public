@@ -50,7 +50,7 @@ docker run -d --init --name oc-s0-e1-c $HARD -e PATH=/opt/oc-tools/bin:/usr/loca
 
 The same run again with `--network none` and a fresh HOME volume (`oc-s0-e1-d`).
 
-Path B partial try: copied the tools volume to `oc-s0-e1-tools-b`, then `docker cp` of the worktree's `packages/web/server/.`, `bin/.` and `package.json` over the installed package, then the step 6 run with `--api-only`.
+Path B partial try: copied the tools volume to `oc-s0-e1-tools-b`, then `docker cp` of the worktree's `packages/api/server/.`, `bin/.` and `package.json` over the installed package, then the step 6 run with `--api-only`.
 
 `term-test.mjs` (scratch, not in the repo): `POST /auth/session` with the password, `POST /api/terminal/create` with `{cwd:"/tmp",cols:80,rows:24}`, WebSocket `/api/terminal/ws` with the cookie and a same-host `Origin`, binary frames `0x01 + JSON`: `attach`, then `write` of `echo hello-$((40+2)); tty; id -u\r`.
 

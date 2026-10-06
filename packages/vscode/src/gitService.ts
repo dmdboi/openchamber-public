@@ -569,7 +569,7 @@ async function checkInProgressOperations(directory: string): Promise<{
  */
 async function getGitStatusRaw(directory: string): Promise<GitStatusResult> {
   // Deliberately `-uall`: the web server lists a large untracked directory as
-  // one `dir/` entry (readStatus in web/server/lib/git/service.js) and the
+  // one `dir/` entry (readStatus in api/server/lib/git/service.js) and the
   // shared UI explains such an entry; this runtime has not adopted that bound.
   const statusResult = await execGit(['status', '--porcelain=v1', '-b', '-uall'], directory);
   
@@ -2258,7 +2258,7 @@ const disposeWorktreeInstanceBestEffort = async (
   }
 };
 
-// Mirrors packages/web/server/lib/git/service.js: Windows refuses to delete a
+// Mirrors packages/api/server/lib/git/service.js: Windows refuses to delete a
 // folder another process still holds (a session's shell, a file watcher, an
 // editor); those handles are usually released moments later, so a busy
 // failure is retried briefly before it is reported.
@@ -2396,7 +2396,7 @@ export async function removeWorktree(directory: string, input: RemoveGitWorktree
 
 // Run snapshots live under a private namespace so they never show up as
 // branches or tags, yet stay reachable (and safe from gc) until deleted.
-// Mirrors packages/web/server/lib/git/service.js snapshotWorktree.
+// Mirrors packages/api/server/lib/git/service.js snapshotWorktree.
 const RUN_SNAPSHOT_REF_PATTERN = /^refs\/openchamber\/runs\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 const assertRunSnapshotRef = (ref: string | undefined): string => {

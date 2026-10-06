@@ -35,7 +35,7 @@ project.
 - A failed first load is an `error` state with Retry. A failed refresh keeps the shown items and shows the error above them. Failure never becomes an empty list.
 - Every first-page request bumps the key's generation; an answer or a later page from an older generation is dropped.
 - Keys someone is subscribed to are never evicted; the 40-entry bound is a soft target.
-- GitHub pages come from `GET /api/source-control/github/references` (server: `packages/web/server/lib/github/DOCUMENTATION.md`), read with the project's GitHub read context (`useGitHubReadContext`): the account its binding names, or the current github.com account for a repository nobody bound. List and preview cache keys carry that account. Linear lists use `linear.issuesList` with `assignee=me` for the Assigned chip.
+- GitHub pages come from `GET /api/source-control/github/references` (server: `packages/api/server/lib/github/DOCUMENTATION.md`), read with the project's GitHub read context (`useGitHubReadContext`): the account its binding names, or the current github.com account for a repository nobody bound. List and preview cache keys carry that account. Linear lists use `linear.issuesList` with `assignee=me` for the Assigned chip.
 
 ## Preview and attach
 

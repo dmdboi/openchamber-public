@@ -4,8 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
-import { builtInExtensionSchema, builtInRegistrySchema, DEFAULT_BUILTIN_ROOT } from '../packages/web/server/lib/guests/builtins.js';
-import { inspectGuestPackage } from '../packages/web/server/lib/guests/catalog.js';
+import { builtInExtensionSchema, builtInRegistrySchema, DEFAULT_BUILTIN_ROOT } from '../packages/api/server/lib/guests/builtins.js';
+import { inspectGuestPackage } from '../packages/api/server/lib/guests/catalog.js';
 
 const repoRoot = fileURLToPath(new URL('../', import.meta.url));
 const relativeFile = z.string().min(1).refine((value) => !value.includes('\\') && !value.includes('\0')

@@ -1,4 +1,4 @@
-// Shared with packages/web/server/lib/opencode/settings-files.js via esbuild
+// Shared with packages/api/server/lib/opencode/settings-files.js via esbuild
 // bundling. Keep this module a thin re-export so the web server and the
 // extension host cannot write different settings files.
 //
@@ -10,12 +10,12 @@
 import {
   provideSettingsRegistryFields,
   type SettingsSurface,
-} from '../../web/server/lib/opencode/settings-files.js';
+} from '../../api/server/lib/opencode/settings-files.js';
 import { SETTINGS_REGISTRY_FIELDS } from './settings-registry-gate';
 
 provideSettingsRegistryFields(SETTINGS_REGISTRY_FIELDS);
 
-export * from '../../web/server/lib/opencode/settings-files.js';
+export * from '../../api/server/lib/opencode/settings-files.js';
 
 /** The extension host is always the VS Code surface kind. */
 export const VSCODE_SETTINGS_SURFACE: SettingsSurface = 'vscode';

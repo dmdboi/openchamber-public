@@ -14,10 +14,10 @@
 
 - `packages/web/src/runtimeConfig.ts`: initializes runtime URL/auth and web APIs.
 - `packages/web/src/api/index.ts`: composes web `RuntimeAPIs`.
-- `packages/web/server/lib/opencode/core-routes.js`: installs OpenChamber route families.
-- `packages/web/server/lib/opencode/feature-routes-runtime.js`: explicit feature route registration.
-- `packages/web/server/lib/opencode/proxy.js`: generic OpenCode proxy fallback.
-- `packages/web/server/lib/ui-auth/ui-auth.js`: session and URL-token route gates.
+- `packages/api/server/lib/opencode/core-routes.js`: installs OpenChamber route families.
+- `packages/api/server/lib/opencode/feature-routes-runtime.js`: explicit feature route registration.
+- `packages/api/server/lib/opencode/proxy.js`: generic OpenCode proxy fallback.
+- `packages/api/server/lib/ui-auth/ui-auth.js`: session and URL-token route gates.
 
 Explicit OpenChamber routes must register before the generic `/api/*` OpenCode proxy.
 

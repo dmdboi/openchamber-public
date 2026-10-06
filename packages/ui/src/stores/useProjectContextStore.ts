@@ -6,7 +6,7 @@
  * config. Writers now mutate the store and every reader re-renders from it.
  *
  * Storage is server-owned; this store is a cache with optimistic mutations.
- * See `packages/web/server/lib/project-context/DOCUMENTATION.md`.
+ * See `packages/api/server/lib/project-context/DOCUMENTATION.md`.
  */
 
 import { create } from 'zustand';
