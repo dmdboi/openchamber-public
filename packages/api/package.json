@@ -13,13 +13,14 @@
   "scripts": {
     "build": "bun ../../scripts/build-builtin-extensions.mjs && node --check server/index.js",
     "prepack": "bun ../../scripts/build-builtin-extensions.mjs",
-    "type-check": "node --check server/index.js",
+    "type-check": "node --check server/index.js && tsc --noEmit -p tsconfig.types.json",
     "lint": "node --check server/index.js",
     "test": "vitest run"
   },
   "dependencies": {
     "@gitbeaker/rest": "43.8.0",
     "@octokit/rest": "^22.0.1",
+    "@openchamber/contracts": "workspace:*",
     "@openchamber/sdk": "workspace:*",
     "@openchamber/web": "workspace:*",
     "@opencode/client": "2.0.23",

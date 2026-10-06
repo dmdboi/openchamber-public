@@ -9,6 +9,7 @@ COPY bun-patches ./bun-patches
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/web/package.json ./packages/web/
 COPY packages/api/package.json ./packages/api/
+COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/cli/package.json ./packages/cli/
 COPY packages/electron/package.json ./packages/electron/
 COPY packages/vscode/package.json ./packages/vscode/

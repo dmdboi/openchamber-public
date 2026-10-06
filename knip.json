@@ -86,6 +86,9 @@
         "tests/**/*.{js,ts}"
       ]
     },
+    "packages/contracts": {
+      "project": ["src/**/*.ts"]
+    },
     "packages/mobile": {
       "entry": [
         "scripts/**/*.{js,cjs,mjs,ts}"

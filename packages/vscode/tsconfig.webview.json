@@ -15,6 +15,9 @@
     "baseUrl": ".",
     "types": ["vite/client", "@types/dom-speech-recognition"],
     "paths": {
+      "@openchamber/contracts": ["../contracts/src/index.ts"],
+      "@openchamber/contracts/git": ["../contracts/src/git.ts"],
+      "@openchamber/contracts/source-control": ["../contracts/src/source-control.ts"],
       "@openchamber/sdk": ["../sdk/src/index.ts"],
       "@openchamber/sdk/schemas": ["../sdk/src/schemas.ts"],
       "@/*": ["../ui/src/*"],
