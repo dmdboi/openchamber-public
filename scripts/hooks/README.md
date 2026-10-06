@@ -21,7 +21,7 @@ the size of the commit rather than the size of the repository.
 | `.test.*`, `.spec.*`, `*.vitest.tsx` | the package's test runner, see below |
 
 The lint scopes are the directories each package's `lint` script covers:
-`packages/sdk/{src,examples,tests}`, `packages/ui/src`,
+`packages/sdk/{src,examples,tests}`, `packages/ui/{src,tests}`,
 `packages/vscode/{src,webview,tests}` and `packages/web/{src,tests}`. Electron lints nothing. TypeScript outside them, such as
 `tools/oxlint` or the root `vite.config.ts`, is not linted on commit, because CI
 does not lint it either. Keep `LINT_SCOPES` in `pre-commit.mjs` in step with
