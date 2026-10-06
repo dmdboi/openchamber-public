@@ -140,7 +140,7 @@ export function selectTestFiles(filePaths) {
 // `*.vitest.tsx` files are in the same config's include list.
 export function isWebVitestFile(filePath) {
   if (filePath.startsWith('packages/web/')) return true;
-  return /^packages\/ui\/src\/.*\.vitest\.tsx$/.test(filePath);
+  return /^packages\/ui\/tests\/src\/.*\.vitest\.tsx$/.test(filePath);
 }
 
 /** Splits staged test files between the web Vitest run and the isolated runner. */

@@ -48,7 +48,7 @@ internals — which ages badly and fails silently.
 
 Prefer focused coverage in:
 
-- `packages/ui/src/lib/runtime-url.test.ts`
-- `packages/ui/src/lib/runtime-auth.test.ts`
+- `packages/ui/tests/src/lib/runtime-url.test.ts`
+- `packages/ui/tests/src/lib/runtime-auth.test.ts`
 - `packages/web/tests/server/lib/ui-auth/ui-auth.test.js`
 - `packages/web/tests/server/lib/dev-tunnel/tunnel.test.js`

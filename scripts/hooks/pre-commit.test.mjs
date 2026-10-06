@@ -122,21 +122,21 @@ test('selectTestFiles finds test and spec files in nested paths', () => {
 
 test('selectTestFiles includes the UI vitest files and skips ignored directories', () => {
   const files = [
-    'packages/ui/src/components/views/Thing.vitest.tsx',
+    'packages/ui/tests/src/components/views/Thing.vitest.tsx',
     'node_modules/pkg/dep.test.js',
     'packages/ui/dist/old.test.ts',
     'src/plain.ts',
   ];
-  assert.deepEqual(selectTestFiles(files), ['packages/ui/src/components/views/Thing.vitest.tsx']);
-  assert.equal(isTestFile('packages/ui/src/components/views/Thing.vitest.tsx'), true);
+  assert.deepEqual(selectTestFiles(files), ['packages/ui/tests/src/components/views/Thing.vitest.tsx']);
+  assert.equal(isTestFile('packages/ui/tests/src/components/views/Thing.vitest.tsx'), true);
   assert.equal(isTestFile('packages/ui/vitest.config.ts'), false);
 });
 
 test('isWebVitestFile owns web tests and UI vitest files, including paths with spaces', () => {
   assert.equal(isWebVitestFile('packages/web/tests/server/lib/relay/service.test.js'), true);
   assert.equal(isWebVitestFile('packages/web/dir with space/a.test.ts'), true);
-  assert.equal(isWebVitestFile('packages/ui/src/components/views/Thing.vitest.tsx'), true);
-  assert.equal(isWebVitestFile('packages/ui/src/lib/a.test.ts'), false);
+  assert.equal(isWebVitestFile('packages/ui/tests/src/components/views/Thing.vitest.tsx'), true);
+  assert.equal(isWebVitestFile('packages/ui/tests/src/lib/a.test.ts'), false);
   assert.equal(isWebVitestFile('packages/electron/tests/updater-check.test.mjs'), false);
   assert.equal(isWebVitestFile('scripts/bump-version.test.mjs'), false);
 });
@@ -145,18 +145,18 @@ test('planTestRuns splits web Vitest files from the isolated runner and keeps pa
   const runs = planTestRuns([
     'packages/web/tests/server/lib/relay/service.test.js',
     'packages/web/tests/server/lib/relay/e2ee.test.js',
-    'packages/ui/src/components/views/Thing.vitest.tsx',
-    'packages/ui/src/lib/with space.test.ts',
+    'packages/ui/tests/src/components/views/Thing.vitest.tsx',
+    'packages/ui/tests/src/lib/with space.test.ts',
     'packages/vscode/src/bridge.test.ts',
     'scripts/run-isolated-tests.test.mjs',
   ]);
   assert.deepEqual(runs.webVitest, [
     'packages/web/tests/server/lib/relay/service.test.js',
     'packages/web/tests/server/lib/relay/e2ee.test.js',
-    'packages/ui/src/components/views/Thing.vitest.tsx',
+    'packages/ui/tests/src/components/views/Thing.vitest.tsx',
   ]);
   assert.deepEqual(runs.isolated, [
-    'packages/ui/src/lib/with space.test.ts',
+    'packages/ui/tests/src/lib/with space.test.ts',
     'packages/vscode/src/bridge.test.ts',
     'scripts/run-isolated-tests.test.mjs',
   ]);
