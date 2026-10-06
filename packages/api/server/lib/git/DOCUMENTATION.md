@@ -7,11 +7,13 @@ This module provides Git repository operations for the web server runtime, inclu
 - `packages/api/server/lib/git/`: Git module directory containing all Git-related functionality.
   - `index.js`: Public API entry point imported by `packages/api/server/index.js`.
   - `routes.js`: Express route registration for `/api/git/*` endpoints.
-  - `service.js`: Git runtime and shared primitives; composes the focused services below and preserves their existing public exports.
+  - `service.js`: Git command composition and the Git operation APIs; composes the focused services below and preserves their existing public exports. It keeps `runGitCommand`, ref parsing, and repository-only helpers that were not extracted into `runtime.js`.
+  - `runtime.js`: Shared Git runtime and repository-context primitives: Git binary discovery and simple-git creation, SSH-auth-socket and Git environment construction, `createGit`/`createGitForGlobalConfig`, directory and Git path normalization, the process-local index-mutation queues, repository file-path validation, and repository root/context creation including `getRepositoryRoot`. It owns the resolved Git binary and the index mutation queues exactly once.
   - `services/status.js`: Status reads and tracking-branch lookup, including refresh serialization, process timeouts, and bounded untracked-directory expansion.
   - `services/untracked-files.js`: Bounded listing and expansion of untracked directories for status reads.
   - `services/diff.js`: Standard `getDiff`/`getPathDiff` reads and no-index diff helpers.
-  - `services/files.js`: File contents, revert and hunk operations, and index staging. The index-mutation queue remains owned by `service.js` and is injected here.
+  - `services/files.js`: File contents, revert and hunk operations, and index staging. The index-mutation queue is owned by `runtime.js` and is injected here.
+  - `services/repository-operations.js`: Ancestor checks, untracked path listing and diffs, stash operations, and commit creation. Commit receives the same shared index-mutation queue from `runtime.js` rather than creating its own.
   - `services/branch-queries.js`: Remote branch listings and unpublished-commit counts, including the bounded remote-head cache.
   - `services/branches.js`: Branch creation, checkout, mutation, and branch-base lookup.
   - `services/history.js`: Commit summaries, log, and commit-file inspection.
@@ -21,9 +23,11 @@ This module provides Git repository operations for the web server runtime, inclu
   - `services/merge.js`: Merge/rebase execution, continuation, abort, and conflict details.
   - `services/worktrees.js`: Worktree listing and bounded topology-change tracking.
   - `services/worktree-state.js`: Snapshot, worktree identity, directory validation, and canonical worktree state.
-  - `services/worktree-removal.js`: Worktree removal and its `.git` symlink recovery and rollback logic. It uses bootstrap state owned by `service.js`.
-  - Worktree creation and bootstrap still live in `service.js` with their state helpers; removal receives the state operations it needs.
-  - Each service receives its shared Git/runtime dependencies from `service.js`; it does not import back into the composition module.
+  - `services/worktree-bootstrap-state.js`: Single owner of process-local worktree bootstrap state, the active bootstrap task registry, bootstrap status/hydration reads, and the `pending`/`ready`/`failed` phase rules.
+  - `services/worktree-creation.js`: Worktree project context, candidate resolution, validation/preview, remote provisioning and rollback, start scripts, and the background bootstrap task. It receives the bootstrap-state operations from `service.js`.
+  - `services/worktree-population.js`: Worktree checkout population: `core.longpaths` enablement for the deep managed checkout root, the filter- and hook-neutral reset with stale `index.lock` recovery, and contributor checkout trust inspection (the executable `post-checkout` hook, the project start command, and the request setup command). It receives `loadProjectStartCommand` from the worktree-creation service and the shared Git/process helpers from `service.js`.
+  - `services/worktree-removal.js`: Worktree removal and its `.git` symlink recovery and rollback logic. It receives the same bootstrap-state operations from `service.js` as creation does.
+  - Each service receives its shared Git/runtime dependencies from `service.js`, which sources the runtime primitives from `runtime.js`; it does not import back into the composition module.
   - `credentials.js`: Git credentials management.
   - `identity-storage.js`: Git identity profile storage — signature (user.name, user.email, signing) plus the optional provider account and transport the identity authenticates with.
   - `identity-provisioning.js`: creates an identity for each connected provider account, backfills accounts connected before identities carried one, and repoints identities when re-authentication renews a credential.
@@ -393,16 +397,16 @@ installed.
 ## Internal Helpers
 
 The following functions are internal helpers used by exported functions:
-- `buildGitEnv()`: Build Git environment with SSH_AUTH_SOCK resolution and `GIT_TERMINAL_PROMPT=0` (unless the server was started with it set): the server has no terminal a user could answer, so a Git command that would ask for a username or password fails instead of waiting forever on a console nobody sees. Credential helpers, including GUI ones, still run before Git would prompt. Inside a Linux AppImage it also drops what the AppImage launcher added to `PATH`, `LD_LIBRARY_PATH`, `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS` (`stripAppImageLauncherEnv`, #4177), so hooks run with the user's values.
-- `createGit(directory)`: Create simple-git instance with the `buildGitEnv()` environment. simple-git ignores an `env` constructor option, so the env goes through `.env()`. simple-git then rejects any command whose env holds a variable that runs a program (`EDITOR`, `PAGER`, `GIT_SSH_COMMAND`, `GIT_ASKPASS`, `SSH_ASKPASS`, `PREFIX`, `GIT_CONFIG_*`, ...) unless the matching `allowUnsafe*` category is on, and those categories also guard `-c` and other arguments. `toSimpleGitEnv` keeps both: variables passed through unchanged from the server's environment sit on the env object's prototype, which simple-git's check (a spread of own keys) skips and `child_process.spawn` (a `for...in`, covered by Node's own tests) still passes to git; anything OpenChamber sets or changes is an own key and is checked. Do not enable env-related `allowUnsafe*` categories to make a variable work, and do not drop such variables: users rely on them for custom SSH keys and GUI credential prompts. `service.test.js` ("git environment through simple-git") fails if either simple-git internal changes.
-- `normalizeDirectoryPath(value)`: Normalize directory paths (supports ~ expansion).
+- `buildGitEnv()` (`runtime.js`): Build Git environment with SSH_AUTH_SOCK resolution and `GIT_TERMINAL_PROMPT=0` (unless the server was started with it set): the server has no terminal a user could answer, so a Git command that would ask for a username or password fails instead of waiting forever on a console nobody sees. Credential helpers, including GUI ones, still run before Git would prompt. Inside a Linux AppImage it also drops what the AppImage launcher added to `PATH`, `LD_LIBRARY_PATH`, `GSETTINGS_SCHEMA_DIR` and `XDG_DATA_DIRS` (`stripAppImageLauncherEnv`, #4177), so hooks run with the user's values.
+- `createGit(directory)` (`runtime.js`): Create simple-git instance with the `buildGitEnv()` environment. simple-git ignores an `env` constructor option, so the env goes through `.env()`. simple-git then rejects any command whose env holds a variable that runs a program (`EDITOR`, `PAGER`, `GIT_SSH_COMMAND`, `GIT_ASKPASS`, `SSH_ASKPASS`, `PREFIX`, `GIT_CONFIG_*`, ...) unless the matching `allowUnsafe*` category is on, and those categories also guard `-c` and other arguments. `toSimpleGitEnv` keeps both: variables passed through unchanged from the server's environment sit on the env object's prototype, which simple-git's check (a spread of own keys) skips and `child_process.spawn` (a `for...in`, covered by Node's own tests) still passes to git; anything OpenChamber sets or changes is an own key and is checked. Do not enable env-related `allowUnsafe*` categories to make a variable work, and do not drop such variables: users rely on them for custom SSH keys and GUI credential prompts. `service.test.js` ("git environment through simple-git") fails if either simple-git internal changes.
+- `normalizeDirectoryPath(value)` (`runtime.js`): Normalize directory paths (supports ~ expansion).
 - `cleanBranchName(branch)`: Remove refs/heads/ or refs/ prefixes.
 - `parseWorktreePorcelain(raw)`: Parse `git worktree list --porcelain` output.
 - `resolveWorktreeProjectContext(directory)`: Resolve project context (projectID, primaryWorktree, worktreeRoot, legacyWorktreeRoot); `worktreeRoot` honors OpenCode's `worktree.directory` and falls back to the data-dir folder keyed by project ID.
 - `resolveCandidateDirectory(...)`: Generate unique worktree directory candidates.
 - `resolveBranchForExistingMode(...)`: Resolve branch for existing-mode worktree creation.
 - `applyUpstreamConfiguration(...)`: Set upstream tracking for new branches.
-- `buildWorktreePopulateCommand(directory)`: Inspect effective content-filter keys and construct the filter-neutral, hook-neutral, no-network reset command used for initial population.
+- `buildWorktreePopulateCommand(directory)` (`services/worktree-population.js`): Inspect effective content-filter keys and construct the filter-neutral, hook-neutral, no-network reset command used for initial population.
 - And various other internal helpers for Git command execution and parsing.
 
 ## Response Contracts

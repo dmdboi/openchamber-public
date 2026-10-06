@@ -492,5 +492,5 @@ async function unstageFiles(directory, paths) {
 }
 
 
-  return { getFileDiff, revertFile, applyHunk, collectDiffs, stageFiles, unstageFiles };
+  return { getFileDiff, revertFile, applyHunk, collectDiffs, stageFile, stageFiles, unstageFile, unstageFiles };
 }
