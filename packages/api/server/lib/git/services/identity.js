@@ -14,7 +14,11 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
       };
     } catch (error) {
       console.error('Failed to get global Git identity:', error);
-      return { userName: null, userEmail: null, sshCommand: null };
+      return {
+        userName: null,
+        userEmail: null,
+        sshCommand: null
+      };
     }
   }
 
@@ -38,12 +42,17 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
       return { userName, userEmail, sshCommand };
     } catch (error) {
       console.error('Failed to get current Git identity:', error);
-      return { userName: null, userEmail: null, sshCommand: null };
+      return {
+        userName: null,
+        userEmail: null,
+        sshCommand: null
+      };
     }
   }
 
   async function hasLocalIdentity(directory) {
     const git = await createGit(directory);
+
     try {
       const localUserName = await git.getConfig('user.name', 'local').catch(() => null);
       const localUserEmail = await git.getConfig('user.email', 'local').catch(() => null);
@@ -53,9 +62,19 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
     }
   }
 
-  /** Removes the author override, without changing repository transport. */
+  /**
+   * Removes the identity a repository was given, leaving the machine's own.
+   *
+   * Choosing the system identity means no OpenChamber override applies here, so
+   * the repository stops naming an author of its own and reads whatever the
+   * machine's configuration says — including later changes to it. Only the keys
+   * an identity writes are removed, and only in this repository.
+   */
   async function clearLocalIdentity(directory) {
     const directoryPath = normalizeDirectoryPath(directory);
+    // `git config --unset` exits 5 for a key that is not set, which is the
+    // ordinary case here rather than a failure. Anything else (a locked
+    // `.git/config`, a repository that is not one) means the author stayed.
     for (const key of ['user.name', 'user.email', 'user.signingkey', 'commit.gpgsign', 'gpg.format']) {
       const removed = await runGitCommand(directoryPath, ['config', '--local', '--unset-all', key]);
       if (!removed.success && removed.exitCode !== 5) {
@@ -67,15 +86,18 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
 
   async function setLocalIdentity(directory, profile) {
     const git = await createGit(directory);
+
     try {
       // Author profiles do not own transport configuration, including legacy auth fields.
       await git.addConfig('user.name', profile.userName, false, 'local');
       await git.addConfig('user.email', profile.userEmail, false, 'local');
+
       if (profile.signCommits === true && typeof profile.signingKey === 'string' && profile.signingKey.trim()) {
         await git.addConfig('gpg.format', 'ssh', false, 'local');
         await git.addConfig('user.signingkey', profile.signingKey.trim(), false, 'local');
         await git.addConfig('commit.gpgsign', 'true', false, 'local');
       }
+
       return true;
     } catch (error) {
       console.error('Failed to set Git identity:', error);
@@ -83,6 +105,17 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
     }
   }
 
+  /**
+   * What a repository's own `.git/config` says about how it pushes and pulls.
+   *
+   * An identity with an account names OpenChamber's credential helper here, so
+   * `git push` from any shell — the person's terminal, the agent's — acts as
+   * that account; a managed key names the SSH wrapper with that key. Both are
+   * written after an empty `credential.helper`, which is how Git is told that
+   * the entries before it, the machine's own, do not apply to this repository.
+   * Null for either removes what OpenChamber wrote and nothing else: a helper
+   * the person configured themselves is not OpenChamber's to remove.
+   */
   async function configureRepositoryTransport(directory, { credentialHelper = null, sshCommand = null } = {}) {
     const directoryPath = normalizeDirectoryPath(directory);
     if (typeof directoryPath !== 'string' || !directoryPath.trim()) throw new Error('Git directory is required');
@@ -109,8 +142,11 @@ export const createIdentityService = ({ createGit, createGitForGlobalConfig, nor
         if (!added.success) throw new Error(added.stderr || 'Failed to write the repository credential helper');
       }
     }
-    // The helper picks the grant by repository path; the ownership marker
-    // ensures only settings OpenChamber introduced are removed later.
+    // The helper picks the grant by repository path, so an origin and a fork on
+    // one host can answer as different accounts; Git sends the path only with
+    // `credential.useHttpPath`. The person's own helpers never see it: inside
+    // this repository the reset hides them, and the helper asks them from
+    // outside it. A value the person set is theirs; the marker records ours.
     const ownedPathKey = 'openchamber.credentialusehttppath';
     const owned = (await config(['--get', ownedPathKey])).success;
     if (credentialHelper && !owned) {

@@ -8,6 +8,11 @@
 // from the worktree-creation service: creation needs this module's
 // `populateWorktreeWithLockRecovery`, so the dependency only goes one way and
 // neither module imports the other.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+
+const fsp = fs.promises;
 
 const GIT_NULL_REF = '0'.repeat(40);
 const WORKTREE_INDEX_LOCK_RETRY_DELAY_MS = 250;
@@ -46,7 +51,6 @@ const WORKTREE_POPULATE_CONFIG_ARGS = [
 ];
 
 export function createWorktreePopulationService({
-  fsp, fs, path, crypto,
   normalizeDirectoryPath, normalizeGitOutputPath,
   runGitCommand, runGitCommandOrThrow, buildGitEnv,
   getFileIdentity, wait,

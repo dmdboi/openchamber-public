@@ -17,6 +17,12 @@ export function createRangeDiffService({
     .then((value) => Boolean(String(value || '').trim()))
     .catch(() => false);
 
+  /**
+   * The branch list includes remote-only branches that `ls-remote` reported but
+   * the repository never fetched (#2098), so a comparison can name a ref that does
+   * not exist locally. Say that plainly instead of letting git's "ambiguous
+   * argument" surface as an opaque failure.
+   */
   async function assertRangeRefsResolve(git, refs) {
     for (const ref of refs) {
       if (!(await refResolvesToCommit(git, ref))) {
@@ -73,7 +79,9 @@ export function createRangeDiffService({
     const { directoryPath, directoryGit, repoRoot, git } = await createRepositoryGitContext(directory);
     const baseRef = typeof base === 'string' ? base.trim() : '';
     const headRef = typeof head === 'string' ? head.trim() : '';
-    if (!baseRef || !headRef) throw new Error('base and head are required');
+    if (!baseRef || !headRef) {
+      throw new Error('base and head are required');
+    }
 
     await assertRangeRefsResolve(git, [baseRef, headRef]);
 
@@ -104,33 +112,45 @@ export function createRangeDiffService({
         if (paths.length === 0) throw error;
       }
     }
-    if (includeWorkingTree) return runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args, paths);
+    if (includeWorkingTree) {
+      return runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args, paths);
+    }
     args.push(`${baseRef}...${headRef}`, '--', ...paths);
-    return git.raw(args);
+    const diff = await git.raw(args);
+    return diff;
   }
 
   async function getRangeFiles(directory, { base, head, includeWorkingTree = false } = {}) {
     const { git, repoRoot } = await createRepositoryGitContext(directory);
     const baseRef = typeof base === 'string' ? base.trim() : '';
     const headRef = typeof head === 'string' ? head.trim() : '';
-    if (!baseRef || !headRef) throw new Error('base and head are required');
+    if (!baseRef || !headRef) {
+      throw new Error('base and head are required');
+    }
 
     await assertRangeRefsResolve(git, [baseRef, headRef]);
 
-    // `-C` detects copies among changed files only; rename detection is on by default.
+    // `-C` (copy detection among changed files only, so cheap) makes copies
+    // surface as C entries instead of plain additions; rename detection is on
+    // by default.
     const args = ['diff', '--name-status', '-z', '-C'];
     const raw = includeWorkingTree
       ? await runWorkingTreeRangeDiff({ git, repoRoot }, baseRef, headRef, args)
       : await git.raw([...args, `${baseRef}...${headRef}`, '--']);
+    // -z format: STATUS\0PATH\0[ORIG\0] repeated. For rename/copy entries
+    // (`R100`, `C75`) the first path token is the ORIGINAL path and the second
+    // is the DESTINATION — the diff (and the UI) must address the destination.
     const tokens = String(raw || '').split('\0');
     const files = [];
     for (let index = 0; index < tokens.length; index += 1) {
       const status = (tokens[index] || '').trim();
       if (!status) continue;
       const isRenameOrCopy = status.startsWith('R') || status.startsWith('C');
-      const filePath = isRenameOrCopy ? (tokens[index + 2] || '') : (tokens[index + 1] || '');
+      const path = isRenameOrCopy ? (tokens[index + 2] || '') : (tokens[index + 1] || '');
       index += isRenameOrCopy ? 2 : 1;
-      if (filePath) files.push({ path: filePath, status: status.charAt(0) });
+      if (path) {
+        files.push({ path, status: status.charAt(0) });
+      }
     }
     return files;
   }

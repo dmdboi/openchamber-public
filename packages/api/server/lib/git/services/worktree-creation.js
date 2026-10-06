@@ -11,9 +11,15 @@ import {
   WORKTREE_BOOTSTRAP_PHASE_GIT_READY,
   WORKTREE_BOOTSTRAP_PHASE_SETUP_READY,
 } from './worktree-bootstrap-state.js';
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execFileAsync = promisify(execFile);
 
 export function createWorktreeCreationService({
-  fsp, path, os, process, console, execFileAsync,
   normalizeDirectoryPath, normalizeGitOutputPath, readWorktreeDirectorySetting,
   runGitCommand, runGitCommandOrThrow, buildGitEnv,
   cleanBranchName, normalizeStartRef, parseRemoteBranchRef, resolveRemoteBranchRef,

@@ -42,7 +42,7 @@ export function createStatusService({
 
   async function getStatus(directory, options = {}) {
     const normalizedDirectory = normalizeDirectoryPath(directory);
-    if (!normalizedDirectory || !normalizedDirectory.trim()) {
+    if (typeof normalizedDirectory !== 'string' || !normalizedDirectory.trim()) {
       throw new Error('directory is required');
     }
     const lightMode = options.mode === 'light';

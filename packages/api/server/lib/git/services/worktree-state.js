@@ -1,5 +1,9 @@
 // Run snapshots live under a private namespace so they never show up as
 // branches or tags, yet stay reachable (and safe from gc) until deleted.
+import { promises as fsp } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
 const RUN_SNAPSHOT_REF_PATTERN = /^refs\/openchamber\/runs\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 const assertRunSnapshotRef = (ref) => {
@@ -18,9 +22,6 @@ const SNAPSHOT_IDENTITY_ENV = {
 };
 
 export function createWorktreeStateService({
-  fsp,
-  path,
-  os,
   normalizeDirectoryPath,
   runGitCommand,
   runGitCommandOrThrow,
@@ -72,7 +73,6 @@ export function createWorktreeStateService({
     }
   }
 
-  /** @public */
   async function isLinkedWorktree(directory) {
     const git = await createGit(directory);
     try {
@@ -87,7 +87,6 @@ export function createWorktreeStateService({
     }
   }
 
-  /** @public */
   async function validateWorktreeDirectory(directory, worktreeRoot) {
     const directoryPath = normalizeDirectoryPath(directory);
     const rootPath = normalizeDirectoryPath(worktreeRoot);
@@ -113,6 +112,7 @@ export function createWorktreeStateService({
 
     const resolvedCwd = await canonicalPath(directoryPath);
     const resolvedRoot = await canonicalPath(rootPath);
+
     const inside = resolvedCwd.startsWith(resolvedRoot + path.sep) || resolvedCwd === resolvedRoot;
 
     return {
@@ -123,20 +123,35 @@ export function createWorktreeStateService({
     };
   }
 
-  /** @public */
   async function canonicalizeWorktreeState(directory) {
     const directoryPath = normalizeDirectoryPath(directory);
-    const notRepository = {
-      worktreeRoot: null,
-      cwd: null,
-      branch: null,
-      headState: 'detached',
-      worktreeStatus: 'not-a-repo',
-      legacy: false,
-      degraded: false,
-      attentionReason: null,
-    };
-    if (!directoryPath || !(await isGitRepository(directoryPath))) return notRepository;
+
+    if (!directoryPath) {
+      return {
+        worktreeRoot: null,
+        cwd: null,
+        branch: null,
+        headState: 'detached',
+        worktreeStatus: 'not-a-repo',
+        legacy: false,
+        degraded: false,
+        attentionReason: null,
+      };
+    }
+
+    const isRepo = await isGitRepository(directoryPath);
+    if (!isRepo) {
+      return {
+        worktreeRoot: null,
+        cwd: null,
+        branch: null,
+        headState: 'detached',
+        worktreeStatus: 'not-a-repo',
+        legacy: false,
+        degraded: false,
+        attentionReason: null,
+      };
+    }
 
     const cwd = await canonicalPath(directoryPath);
     const git = await createGit(directoryPath);
@@ -144,9 +159,9 @@ export function createWorktreeStateService({
 
     let worktreeRoot = null;
     let worktreeStatus = 'ready';
-    let headState = 'branch';
+    let headState = /** @type {'branch' | 'detached' | 'unborn'} */ ('branch');
     let branch = null;
-    let attentionReason = null;
+    let attentionReason = /** @type {'merge' | 'rebase' | 'cherry-pick' | 'revert' | 'bisect' | null} */ (null);
 
     try {
       const context = await resolveWorktreeProjectContext(directoryPath, { tolerateWorktreeRootConfigError: true });
@@ -200,7 +215,16 @@ export function createWorktreeStateService({
       // Status check failed — ignore
     }
 
-    return { worktreeRoot, cwd, branch, headState, worktreeStatus, legacy: false, degraded: false, attentionReason };
+    return {
+      worktreeRoot,
+      cwd,
+      branch,
+      headState,
+      worktreeStatus,
+      legacy: false,
+      degraded: false,
+      attentionReason,
+    };
   }
 
   return { snapshotWorktree, isLinkedWorktree, validateWorktreeDirectory, canonicalizeWorktreeState };

@@ -101,7 +101,6 @@ export function createBranchesService({
     return { base: source };
   }
 
-  /** @public */
   async function createBranch(directory, branchName, options = {}) {
     const { git } = await createRepositoryGitContext(directory);
 
@@ -288,7 +287,6 @@ export function createBranchesService({
     }
   }
 
-  /** @public */
   async function deleteBranch(directory, branch, options = {}) {
     const { git } = await createRepositoryGitContext(directory);
 
@@ -305,7 +303,6 @@ export function createBranchesService({
     }
   }
 
-  /** @public */
   async function renameBranch(directory, oldName, newName) {
     const { git, repoRoot } = await createRepositoryGitContext(directory);
 

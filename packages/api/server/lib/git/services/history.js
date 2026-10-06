@@ -21,19 +21,30 @@ export function createHistoryService({
   }
 
   /**
-   * Resolve the requested base as written, preferring an available local ref and
-   * falling back to the matching origin ref only when necessary.
+   * Resolve a log base ref using local-first semantics.
+   *
+   * - If `from` is falsy / whitespace → return undefined.
+   * - If the local ref resolves → return it unchanged (caller's intent preserved).
+   * - If the local ref is absent but `origin/<from>` exists → return `origin/<from>`
+   *   (common when the user has never checked out the base branch locally).
+   * - If neither resolves → return `from` unchanged so git surfaces a meaningful error.
+   *
+   * @param {string | undefined} from   - The raw `from` option value.
+   * @param {(ref: string) => Promise<boolean>} checkRef - Returns true when the ref resolves.
+   * @returns {Promise<string | undefined>}
    */
   async function resolveBaseRefForLog(from, checkRef) {
     const normalized = typeof from === 'string' ? from.trim() : undefined;
     if (!normalized) return undefined;
+
     if (await checkRef(normalized)) return normalized;
+
     const originRef = `refs/remotes/origin/${normalized}`;
     if (await checkRef(originRef)) return `origin/${normalized}`;
+
     return normalized;
   }
 
-  /** @public */
   async function getCommitSummaries(directory, shas) {
     const commits = Array.isArray(shas)
       ? shas.map((sha) => String(sha || '').trim()).filter(Boolean)
@@ -298,7 +309,6 @@ export function createHistoryService({
     return { files };
   }
 
-  /** @public */
   async function getCommitFileDiff(directory, hash, filePath, isBinary) {
     if (!directory || !hash || !filePath) {
       throw new Error('directory, hash, and path are required for getCommitFileDiff');
