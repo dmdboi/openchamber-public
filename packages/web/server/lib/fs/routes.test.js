@@ -1758,10 +1758,12 @@ describe('fs stat directory error handling', () => {
     try {
       await mkdir(path.join(directory, 'fs'));
       await mkdir(path.join(directory, 'git'));
+      await mkdir(path.join(directory, 'shared'));
       await copyFile(new URL('./routes.js', import.meta.url), path.join(directory, 'fs/routes.mjs'));
       await copyFile(new URL('./byte-range.js', import.meta.url), path.join(directory, 'fs/byte-range.js'));
       await copyFile(new URL('../path-realpath-cache.js', import.meta.url), path.join(directory, 'path-realpath-cache.js'));
       await copyFile(new URL('../git/redaction.js', import.meta.url), path.join(directory, 'git/redaction.js'));
+      await copyFile(new URL('../shared/guards.js', import.meta.url), path.join(directory, 'shared/guards.js'));
       expect(() => execFileSync('node', [
         '--input-type=module',
         '--eval',

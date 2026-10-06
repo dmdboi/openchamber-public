@@ -9,6 +9,7 @@ import {
   finishConfigUpdate,
   updateConfigUpdateMessage,
 } from "@/lib/configUpdate";
+import { waitForOpenCodeConnection } from "@/stores/waitForOpenCodeConnection";
 import { createDeferredSafeJSONStorage } from "./utils/safeStorage";
 import { useConfigStore } from "@/stores/useConfigStore";
 import { invalidateCommandsLoadCache, useCommandsStore } from "@/stores/useCommandsStore";
@@ -268,12 +269,6 @@ export const isAgentManageable = (agent: Agent): boolean => {
 
 const CONFIG_EVENT_SOURCE = "useAgentsStore";
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const MAX_HEALTH_WAIT_MS = 20000;
-const FAST_HEALTH_POLL_INTERVAL_MS = 300;
-const FAST_HEALTH_POLL_ATTEMPTS = 4;
-const SLOW_HEALTH_POLL_BASE_MS = 800;
-const SLOW_HEALTH_POLL_INCREMENT_MS = 200;
-const SLOW_HEALTH_POLL_MAX_MS = 2000;
 
 const hasValue = <T>(value: T | null | undefined): value is T => value !== null && value !== undefined;
 
@@ -770,50 +765,6 @@ export const useAgentsStore = create<AgentsStore>()(
 
 if (typeof window !== "undefined") {
   window.__zustand_agents_store__ = useAgentsStore;
-}
-
-async function waitForOpenCodeConnection(delayMs?: number) {
-  const initialPause = typeof delayMs === "number" && delayMs > 0
-    ? Math.min(delayMs, FAST_HEALTH_POLL_INTERVAL_MS)
-    : 0;
-
-  if (initialPause > 0) {
-    await sleep(initialPause);
-  }
-
-  const start = Date.now();
-  let attempt = 0;
-  let lastError: unknown = null;
-
-  while (Date.now() - start < MAX_HEALTH_WAIT_MS) {
-    attempt += 1;
-    updateConfigUpdateMessage(`Waiting for OpenCode… (attempt ${attempt})`);
-
-    try {
-      const isHealthy = await opencodeClient.checkHealth();
-      if (isHealthy) {
-        return;
-      }
-      lastError = new Error("OpenCode health check reported not ready");
-    } catch (error) {
-      lastError = error;
-    }
-
-    const elapsed = Date.now() - start;
-
-    const waitMs =
-      attempt <= FAST_HEALTH_POLL_ATTEMPTS && elapsed < 1200
-        ? FAST_HEALTH_POLL_INTERVAL_MS
-        : Math.min(
-            SLOW_HEALTH_POLL_BASE_MS +
-              Math.max(0, attempt - FAST_HEALTH_POLL_ATTEMPTS) * SLOW_HEALTH_POLL_INCREMENT_MS,
-            SLOW_HEALTH_POLL_MAX_MS,
-          );
-
-    await sleep(waitMs);
-  }
-
-  throw lastError || new Error("OpenCode did not become ready in time");
 }
 
 type ConfigRefreshMode = "active" | "projects";

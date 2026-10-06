@@ -1,13 +1,10 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import { OpenCode } from '@opencode/client';
 import { createGitRedactor, redactGitText } from './redaction.js';
 import { redactRemoteUrl } from '../source-control/url-redaction.js';
 import { parsePublicGitIdentityProfile, toPublicGitIdentityProfile } from './identity-storage.js';
 
 const NETWORK_OPERATION_ID = /^[A-Za-z0-9_-]{1,200}$/;
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
 const toGitIdentitySummary = (identity) => identity ? {
   userName: identity.userName ?? null,
   userEmail: identity.userEmail ?? null,
@@ -1282,7 +1279,6 @@ export function registerGitRoutes(app, {
       res.status(500).json({ error: error.message || 'Failed to delete branch' });
     }
   });
-
 
   app.put('/api/git/branches/rename', async (req, res) => {
     const { renameBranch } = await getGitLibraries();

@@ -22,7 +22,8 @@ import type { IconName } from "@/components/icon/icons";
 import { cn } from '@/lib/utils';
 import { useDeviceInfo } from '@/lib/device';
 import type { ModelMetadata } from '@/types';
-import { getCurrentIntlLocale, useI18n } from '@/lib/i18n';
+import { useI18n } from '@/lib/i18n';
+import { formatCompactNumber } from '@/lib/numberFormat';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 import { updateDesktopSettings } from '@/lib/persistence';
 import { opencodeClient } from '@/lib/opencode/client';
@@ -64,13 +65,6 @@ import {
   type ProviderConfigScope,
   type StoredProviderEntry,
 } from './custom-provider-form';
-
-const formatCompactNumber = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
-  notation: 'compact',
-  compactDisplay: 'short',
-  maximumFractionDigits: 1,
-  minimumFractionDigits: 0,
-}).format(value);
 
 const formatTokens = (value?: number | null) => {
   if (typeof value !== 'number' || Number.isNaN(value)) {

@@ -21,6 +21,7 @@ import { handleDropdownNavigationKey } from '@/components/ui/dropdown-navigation
 import { getCurrentIntlLocale } from '@/lib/i18n';
 import { mergeModelMetadataWithLiveModel } from '@/lib/modelMetadata';
 import { getModelDisplayName as getSharedModelDisplayName } from '@/lib/modelDisplay';
+import { formatCompactNumber } from '@/lib/numberFormat';
 import { cn } from '@/lib/utils';
 import { useConfigStore } from '@/stores/useConfigStore';
 import { useModelPickerSectionsStore } from '@/stores/useModelPickerSectionsStore';
@@ -50,13 +51,6 @@ type IndexSelectionStore = {
   subscribeIndex: (index: number, listener: () => void) => () => void;
   set: (value: number) => void;
 };
-
-const formatCompactNumber = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
-  notation: 'compact',
-  compactDisplay: 'short',
-  maximumFractionDigits: 1,
-  minimumFractionDigits: 0,
-}).format(value);
 
 const formatUsdCurrency = (value: number) => new Intl.NumberFormat(getCurrentIntlLocale(), {
   style: 'currency',

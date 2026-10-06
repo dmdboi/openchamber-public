@@ -1,3 +1,4 @@
+import { isRecord } from '../shared/guards.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -55,10 +56,6 @@ function validatePluginSpec(spec) {
     throw codedError('Plugin spec cannot contain null bytes', 'INVALID_SPEC');
   }
   return spec.trim();
-}
-
-function isRecord(value) {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function hasOptions(options) {

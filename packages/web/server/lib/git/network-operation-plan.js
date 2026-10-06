@@ -1,3 +1,4 @@
+import { isPlainObject, isString } from '../shared/guards.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -8,10 +9,6 @@ import { createHttpsCredentialReference, normalizeGitRemoteEndpoint } from './cr
 const OPERATIONS = ['push', 'fetch', 'pull', 'delete-remote-branch', 'sync', 'clone', 'checkout-hydration'];
 const SHA_PATTERN = /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i;
 const REF_COMPONENT_PATTERN = /^(?!\.)(?!.*(?:\.\.|\/\.|\.lock(?:\/|$)))(?!.*[~^:?*[\\\s])(?!.*\/$)(?!.*\/\/)[^\0-\x20\x7f]+$/;
-const isPlainObject = (value) => value === Object(value)
-  && !Array.isArray(value)
-  && Object.getPrototypeOf(value) === Object.prototype;
-const isString = (value) => Object.prototype.toString.call(value) === '[object String]';
 const isBoolean = (value) => Object.prototype.toString.call(value) === '[object Boolean]'
   && (value === true || value === false);
 const hasExactKeys = (value, required, optional = []) => {
