@@ -132,7 +132,7 @@ test('selectTestFiles includes the UI vitest files and skips ignored directories
 });
 
 test('isWebVitestFile owns web tests and UI vitest files, including paths with spaces', () => {
-  assert.equal(isWebVitestFile('packages/web/server/lib/relay/service.test.js'), true);
+  assert.equal(isWebVitestFile('packages/web/tests/server/lib/relay/service.test.js'), true);
   assert.equal(isWebVitestFile('packages/web/dir with space/a.test.ts'), true);
   assert.equal(isWebVitestFile('packages/ui/src/components/views/Thing.vitest.tsx'), true);
   assert.equal(isWebVitestFile('packages/ui/src/lib/a.test.ts'), false);
@@ -142,16 +142,16 @@ test('isWebVitestFile owns web tests and UI vitest files, including paths with s
 
 test('planTestRuns splits web Vitest files from the isolated runner and keeps paths intact', () => {
   const runs = planTestRuns([
-    'packages/web/server/lib/relay/service.test.js',
-    'packages/web/server/lib/relay/e2ee.test.js',
+    'packages/web/tests/server/lib/relay/service.test.js',
+    'packages/web/tests/server/lib/relay/e2ee.test.js',
     'packages/ui/src/components/views/Thing.vitest.tsx',
     'packages/ui/src/lib/with space.test.ts',
     'packages/vscode/src/bridge.test.ts',
     'scripts/run-isolated-tests.test.mjs',
   ]);
   assert.deepEqual(runs.webVitest, [
-    'packages/web/server/lib/relay/service.test.js',
-    'packages/web/server/lib/relay/e2ee.test.js',
+    'packages/web/tests/server/lib/relay/service.test.js',
+    'packages/web/tests/server/lib/relay/e2ee.test.js',
     'packages/ui/src/components/views/Thing.vitest.tsx',
   ]);
   assert.deepEqual(runs.isolated, [

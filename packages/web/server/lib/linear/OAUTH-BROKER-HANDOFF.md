@@ -76,9 +76,9 @@ OpenChamber focused tests:
 
 ```sh
 bunx vitest run \
-  packages/web/server/lib/linear/oauth.test.js \
-  packages/web/server/lib/linear/auth.test.js \
-  packages/web/server/lib/linear/routes.test.js
+  packages/web/tests/server/lib/linear/oauth.test.js \
+  packages/web/tests/server/lib/linear/auth.test.js \
+  packages/web/tests/server/lib/linear/routes.test.js
 ```
 
 Hosted API checks:

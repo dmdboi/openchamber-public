@@ -15,7 +15,7 @@ This module provides notification message preparation utilities for the web serv
 - `packages/web/server/lib/notifications/runtime.js`: trigger runtime for OpenCode event-driven notification fanout.
 - `packages/web/server/lib/notifications/template-runtime.js`: notification template variables and session text/title enrichment runtime. Zen-model helpers are retained as compatibility stubs only.
 - `packages/web/server/lib/notifications/message.js`: helper implementation module.
-- `packages/web/server/lib/notifications/message.test.js`: unit tests for notification message helpers.
+- `packages/web/tests/server/lib/notifications/message.test.js`: unit tests for notification message helpers.
 
 ## Public exports
 
@@ -139,7 +139,7 @@ The `settings` parameter for `prepareNotificationLastMessage` supports `maxLastM
 2. Export functions that are intended for public use.
 3. Follow existing patterns for input validation (e.g., type checking for strings).
 4. Use `resolvePositiveNumber` for numeric parameters with fallbacks to maintain safe defaults.
-5. Add corresponding unit tests in `packages/web/server/lib/notifications/message.test.js`.
+5. Add corresponding unit tests in `packages/web/tests/server/lib/notifications/message.test.js`.
 
 ### Error handling
 - `prepareNotificationLastMessage` does not call model summarization.

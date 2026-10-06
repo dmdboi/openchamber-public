@@ -40,9 +40,9 @@ Review every cache keyed only by session ID, directory, URL, or entity ID. Add r
 
 - HTTP/request fidelity: `packages/ui/src/lib/runtime-fetch.test.ts`
 - URL/auth: `packages/ui/src/lib/runtime-url.test.ts`, `runtime-auth.test.ts`
-- Server auth: `packages/web/server/lib/ui-auth/ui-auth.test.js`
-- Generic proxy: `packages/web/server/opencode-proxy.test.js`
-- Dev-server tunnel: `packages/web/server/lib/dev-tunnel/tunnel.test.js`
+- Server auth: `packages/web/tests/server/lib/ui-auth/ui-auth.test.js`
+- Generic proxy: `packages/web/tests/server/opencode-proxy.test.js`
+- Dev-server tunnel: `packages/web/tests/server/lib/dev-tunnel/tunnel.test.js`
 - VS Code bridge: `packages/vscode/tests/webview/api/bridge.test.ts`
 - VS Code proxy: `packages/vscode/tests/src/bridge-proxy-runtime.test.js`
 

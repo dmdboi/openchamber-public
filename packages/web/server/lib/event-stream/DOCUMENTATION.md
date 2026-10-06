@@ -13,9 +13,9 @@ This module contains the OpenChamber message-stream WebSocket protocol and runti
 - `packages/web/server/lib/event-stream/translate-v2.js`: the single place that maps OpenCode 2.x wire events onto the server's own event vocabulary.
 - `packages/web/server/lib/event-stream/upstream-reader.js`: reusable upstream SSE reader with event-id tracking, stall recovery, and reconnect handling.
 - `packages/web/server/lib/event-stream/runtime.js`: thin WebSocket server runtime for upgrade handling and path dispatch to the global/directory bridges.
-- `packages/web/server/lib/event-stream/protocol.test.js`: unit tests for protocol helpers.
-- `packages/web/server/lib/event-stream/upstream-reader.test.js`: unit tests for upstream SSE reader behavior.
-- `packages/web/server/lib/event-stream/runtime.test.js`: unit tests for runtime-side broadcaster behavior.
+- `packages/web/tests/server/lib/event-stream/protocol.test.js`: unit tests for protocol helpers.
+- `packages/web/tests/server/lib/event-stream/upstream-reader.test.js`: unit tests for upstream SSE reader behavior.
+- `packages/web/tests/server/lib/event-stream/runtime.test.js`: unit tests for runtime-side broadcaster behavior.
 
 ## Public exports
 
@@ -91,9 +91,9 @@ The directory WS bridge and the SSE proxy (`/api/global/event`, used by Capacito
 - Keep global replay bounded; do not turn it into an unbounded event log.
 
 ## Testing
-- Run `bunx vitest run server/lib/event-stream` from `packages/web` for the whole module, including `delta-coalescer.test.js` and the resume-from-any-cursor cases in `global-hub.test.js`.
-- Run `bun test packages/web/server/lib/event-stream/protocol.test.js`
-- Run `bun test packages/web/server/lib/event-stream/translate-v2.test.js`
-- Run `bun test packages/web/server/lib/event-stream/upstream-reader.test.js`
-- Run `bun test packages/web/server/lib/event-stream/runtime.test.js`
+- Run `bunx vitest run tests/server/lib/event-stream` from `packages/web` for the whole module, including `delta-coalescer.test.js` and the resume-from-any-cursor cases in `global-hub.test.js`.
+- Run `bun test packages/web/tests/server/lib/event-stream/protocol.test.js`
+- Run `bun test packages/web/tests/server/lib/event-stream/translate-v2.test.js`
+- Run `bun test packages/web/tests/server/lib/event-stream/upstream-reader.test.js`
+- Run `bun test packages/web/tests/server/lib/event-stream/runtime.test.js`
 - Run repo validation before finalizing: `bun run type-check`, `bun run lint`, `bun run build`
