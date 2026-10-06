@@ -16,6 +16,7 @@ Command modules implement user-facing commands and preserve output contracts acr
 - `commands-serve.js`
   - Implements `openchamber serve`.
   - Owns OpenCode CLI checks, port resolution, log rotation, PID/instance registry writes, foreground/background server launch, startup summaries, and foreground shutdown behavior.
+  - Gives the server the UI build (`webDistDir`, resolved from `@openchamber/web`) as `OPENCHAMBER_DIST_DIR` in foreground and daemon modes; a value already in the environment wins.
 
 - `commands-lifecycle.js`
   - Implements `openchamber stop` and `openchamber restart`.

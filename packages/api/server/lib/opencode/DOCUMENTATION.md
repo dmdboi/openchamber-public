@@ -795,7 +795,7 @@ headers }` or v1 `{ npm, options }`. The stored entry is always a
   - `attachProcessHandlers(options)`
 
 ## Public exports (static-routes-runtime.js)
-- `createStaticRoutesRuntime(dependencies)`: creates runtime for static dist resolution and static route registration.
+- `createStaticRoutesRuntime(dependencies)`: creates runtime for static dist resolution and static route registration. The dist directory comes only from `OPENCHAMBER_DIST_DIR`; when it is unset the runtime does not probe the filesystem and answers browser routes with 404.
 - Returned API:
   - `registerStaticRoutes(app)`
 

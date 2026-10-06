@@ -38,10 +38,28 @@
         "tests/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
       ],
       "project": [
-        "bin/**/*.js",
-        "server/**/*.{js,mjs,cjs}",
         "src/**/*.{ts,tsx}",
         "tests/**/*.{js,mjs,cjs,ts,tsx}"
+      ]
+    },
+    "packages/api": {
+      "entry": [
+        "scripts/**/*.mjs",
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts}"
+      ],
+      "project": [
+        "scripts/**/*.mjs",
+        "server/**/*.{js,mjs,cjs}",
+        "tests/**/*.{js,mjs,cjs,ts}"
+      ]
+    },
+    "packages/cli": {
+      "entry": [
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts}"
+      ],
+      "project": [
+        "bin/**/*.js",
+        "tests/**/*.{js,mjs,cjs,ts}"
       ]
     },
     "packages/electron": {

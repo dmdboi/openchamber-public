@@ -24,6 +24,9 @@ COPY . .
 # so the runtime stage can copy the output.
 RUN bun run --cwd packages/sdk build
 RUN bun run build:web
+# Build the built-in extensions the server loads. Not `build`: its
+# `node --check` runs the server here, because `node` in this image is Bun.
+RUN bun run --cwd packages/api prepack
 
 FROM oven/bun:1.4.2 AS runtime
 WORKDIR /home/openchamber
@@ -69,12 +72,16 @@ COPY scripts/docker-entrypoint.sh /home/openchamber/openchamber-entrypoint.sh
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/web/node_modules ./packages/web/node_modules
+COPY --from=builder /app/packages/api/node_modules ./packages/api/node_modules
+COPY --from=builder /app/packages/cli/node_modules ./packages/cli/node_modules
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/packages/web/package.json ./packages/web/package.json
+COPY --from=builder /app/packages/api/package.json ./packages/api/package.json
+COPY --from=builder /app/packages/cli/package.json ./packages/cli/package.json
 COPY --from=builder /app/packages/sdk/package.json ./packages/sdk/package.json
 COPY --from=builder /app/packages/sdk/dist ./packages/sdk/dist
-COPY --from=builder /app/packages/web/bin ./packages/web/bin
-COPY --from=builder /app/packages/web/server ./packages/web/server
+COPY --from=builder /app/packages/cli/bin ./packages/cli/bin
+COPY --from=builder /app/packages/api/server ./packages/api/server
 COPY --from=builder /app/packages/web/dist ./packages/web/dist
 
 EXPOSE 3000

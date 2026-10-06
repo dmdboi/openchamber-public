@@ -12,11 +12,11 @@ import {
 } from './cli-network.js';
 import { discoverRunningInstances } from './cli-lifecycle.js';
 import { getInstanceFilePath, readInstanceOptions } from './cli-process.js';
-import { createRemoteClientAuthRuntime } from '../../../api/server/lib/client-auth/remote-clients.js';
-import { createClientPairingRuntime } from '../../../api/server/lib/client-auth/pairing.js';
-import { createRelayIdentityRuntime } from '../../../api/server/lib/relay/identity.js';
-import { DEFAULT_RELAY_URL, pinnedRelayUrl } from '../../../api/server/lib/relay/service.js';
-import { bytesToBase64Url } from '../../../api/server/lib/relay/e2ee.js';
+import { createRemoteClientAuthRuntime } from '@openchamber/api/server/lib/client-auth/remote-clients.js';
+import { createClientPairingRuntime } from '@openchamber/api/server/lib/client-auth/pairing.js';
+import { createRelayIdentityRuntime } from '@openchamber/api/server/lib/relay/identity.js';
+import { DEFAULT_RELAY_URL, pinnedRelayUrl } from '@openchamber/api/server/lib/relay/service.js';
+import { bytesToBase64Url } from '@openchamber/api/server/lib/relay/e2ee.js';
 import { createSettingsAccessors as createSettingsAccessorsModule } from './cli-settings-accessors.js';
 import {
   intro as clackIntro,

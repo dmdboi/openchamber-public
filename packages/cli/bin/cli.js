@@ -3,6 +3,7 @@
 import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { createRequire } from 'module';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { isModuleCliExecution } from './cli-entry.js';
 import { EXIT_CODE, TunnelCliError } from './lib/cli-errors.js';
@@ -72,7 +73,7 @@ import {
   printJson,
   logStatus,
 } from './cli-output.js';
-import { applyConnectAttemptTimeout } from '../../api/server/lib/network-defaults.js';
+import { applyConnectAttemptTimeout } from '@openchamber/api/server/lib/network-defaults.js';
 
 // The CLI process performs provider fetches (quota/usage, update notes) under
 // Node/undici, whose happy-eyeballs default aborts each connect attempt after
@@ -82,6 +83,11 @@ applyConnectAttemptTimeout();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// The server and the UI build are separate packages. Resolving them by name
+// keeps the CLI independent of where a workspace or an install places them.
+const requireFromCli = createRequire(import.meta.url);
+const WEB_DIST_DIR = path.join(path.dirname(requireFromCli.resolve('@openchamber/web/package.json')), 'dist');
 
 const PACKAGE_JSON = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
 
@@ -209,7 +215,8 @@ const commands = {
 };
 
 commands.serve = createServeCommand({
-  serverPath: path.resolve(__dirname, '../../api/server/index.js'),
+  serverPath: requireFromCli.resolve('@openchamber/api/server/index.js'),
+  webDistDir: WEB_DIST_DIR,
   bunBin: BUN_BIN,
   checkOpenCodeCLI,
   getPreferredServerRuntime,
@@ -237,7 +244,7 @@ commands['connect-url'] = createConnectUrlCommand({
 
 commands.update = createUpdateCommand({
   importFromFilePath,
-  packageManagerPath: path.join(__dirname, '..', 'server', 'lib', 'package-manager.js'),
+  packageManagerPath: requireFromCli.resolve('@openchamber/api/server/lib/package-manager.js'),
   serveCommand: commands.serve.bind(commands),
 });
 

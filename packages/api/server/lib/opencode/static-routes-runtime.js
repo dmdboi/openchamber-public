@@ -5,7 +5,6 @@ export const createStaticRoutesRuntime = (dependencies) => {
     fs,
     path,
     process,
-    __dirname,
     express,
     resolveProjectDirectory,
     buildOpenCodeUrl,
@@ -16,18 +15,18 @@ export const createStaticRoutesRuntime = (dependencies) => {
     isRequestAuthorized,
   } = dependencies;
 
+  // The UI build belongs to @openchamber/web, which depends on this package,
+  // so the server never looks for it on its own. Whoever starts the server
+  // (the CLI, Electron, a dev script) names the directory.
   const resolveDistPath = () => {
     const env = typeof process.env.OPENCHAMBER_DIST_DIR === 'string' ? process.env.OPENCHAMBER_DIST_DIR.trim() : '';
-    if (env) {
-      return path.resolve(env);
-    }
-    return path.resolve(__dirname, '..', '..', 'web', 'dist');
+    return env ? path.resolve(env) : null;
   };
 
   const registerStaticRoutes = (app) => {
     const distPath = resolveDistPath();
 
-    if (fs.existsSync(distPath)) {
+    if (distPath && fs.existsSync(distPath)) {
       console.log(`Serving static files from ${distPath}`);
       const hashedAssetsPrefix = path.join(distPath, 'assets') + path.sep;
       app.use(express.static(distPath, {
@@ -63,7 +62,9 @@ export const createStaticRoutesRuntime = (dependencies) => {
       return;
     }
 
-    console.warn(`Warning: ${distPath} not found, static files will not be served`);
+    console.warn(distPath
+      ? `Warning: ${distPath} not found, static files will not be served`
+      : 'Warning: OPENCHAMBER_DIST_DIR is not set, static files will not be served');
     app.get(/^(?!\/api|\/linear|.*\.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2|ttf|eot|map)).*$/, (_req, res) => {
       res.status(404).send('Static files not found. Please build the application first.');
     });
