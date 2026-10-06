@@ -4,7 +4,7 @@
  * Provider calculations and HTTP fetches are the web server's canonical quota
  * modules, bundled into the extension host with esbuild (the same pattern as
  * `opencode-config-v2.ts`). The registry entrypoint is
- * `packages/web/server/lib/quota/providers/index.js`.
+ * `packages/api/server/lib/quota/providers/index.js`.
  *
  * Only providers whose web module would change credentials, storage, fetch
  * injection or quota response semantics stay in this file:
@@ -51,12 +51,12 @@ import {
   fetchOpenCodeGoQuota,
   fetchDeepinfraQuota,
   fetchDeepseekQuota,
-} from '../../web/server/lib/quota/providers/index.js';
+} from '../../api/server/lib/quota/providers/index.js';
 import type {
   QuotaProviderResult,
   QuotaUsage,
   QuotaUsageWindow,
-} from '../../web/server/lib/quota/providers/index.js';
+} from '../../api/server/lib/quota/providers/index.js';
 
 export {
   fetchClinePassQuota,

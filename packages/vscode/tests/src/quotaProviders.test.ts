@@ -39,7 +39,7 @@ configureOpenCodeCredentials({
 });
 
 import { activateQuotaGiftReset, fetchClinePassQuota, fetchHyperQuota, fetchKiloQuota, fetchKimiQuota, fetchOllamaCloudQuota, fetchQuotaForProvider, fetchXaiQuota, fetchZenmuxQuota, listConfiguredQuotaProviders } from '../../src/quotaProviders';
-import * as webQuotaRegistry from '../../../web/server/lib/quota/providers/index.js';
+import * as webQuotaRegistry from '../../../api/server/lib/quota/providers/index.js';
 import { validateCredential } from '../../src/quotaCredentials';
 
 type MockResponseInit = { ok?: boolean; status?: number };

@@ -6,8 +6,8 @@ import {
   isCredentialListRequest,
   isEnterpriseMode,
   isProviderConnectRequest,
-} from '../../web/server/lib/enterprise-mode.js';
-import { vcsInitRefusal, vcsInitRefusalBody } from '../../web/server/lib/git/repository-root.js';
+} from '../../api/server/lib/enterprise-mode.js';
+import { vcsInitRefusal, vcsInitRefusalBody } from '../../api/server/lib/git/repository-root.js';
 import { isSessionRecordPath, overlaySessionResponseBody, parseJson, type SessionStateStore } from './openchamberSessionState';
 
 type BridgeMessageInput = {

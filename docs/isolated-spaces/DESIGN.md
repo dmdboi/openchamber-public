@@ -82,7 +82,7 @@ The host treats everything that comes out of a space as untrusted data to displa
 
 A space runs the same pair as the host: an OpenChamber server and OpenCode. The host talks only to the OpenChamber server in the space. Only three narrow points touch OpenCode directly, and they live in one small module so an OpenCode format change is a one-file edit: provider configuration that points at the gatekeeper, the login record for the short OpenAI token, and moving a chat to the host for the archive.
 
-The space runs as a non-root user with a read-only root filesystem, all capabilities dropped, no privilege escalation, the engine's seccomp profile, a process limit, a memory limit with no extra swap, a capped log, no container-runtime socket, and no bind mounts. The order is create, verify, start: the place re-reads the real container state before the container ever runs and refuses to start it if anything differs. The owning list of flags and checks is `packages/web/server/lib/spaces/DOCUMENTATION.md`.
+The space runs as a non-root user with a read-only root filesystem, all capabilities dropped, no privilege escalation, the engine's seccomp profile, a process limit, a memory limit with no extra swap, a capped log, no container-runtime socket, and no bind mounts. The order is create, verify, start: the place re-reads the real container state before the container ever runs and refuses to start it if anything differs. The owning list of flags and checks is `packages/api/server/lib/spaces/DOCUMENTATION.md`.
 
 Host resources are part of the boundary. Without a memory limit and a log cap, an agent can exhaust the host's memory or fill its disk through its own output. Each place has a default space size in its settings; the user is not asked per space. Named Docker volumes have no size limit with the default driver. That is a known limit.
 
@@ -107,7 +107,7 @@ Eight operations. Everything else is written once on top of them.
 
 Capabilities are probed, never declared. A place proves it restricts the network by a real attempt to get out.
 
-Implementations call the system CLI from the server: `docker`, `docker` with an SSH target, `kubectl` with an explicit context and namespace on every call, and `container`. The SSH variant uses the system `ssh` with the user's keys and config. It needs key authentication and leaves the Electron SSH manager untouched. Follow the tunnel provider registry in `packages/web/server/lib/tunnels/` as the pattern for the contract, and the child-process rules in the `desktop-shell` skill for every spawn.
+Implementations call the system CLI from the server: `docker`, `docker` with an SSH target, `kubectl` with an explicit context and namespace on every call, and `container`. The SSH variant uses the system `ssh` with the user's keys and config. It needs key authentication and leaves the Electron SSH manager untouched. Follow the tunnel provider registry in `packages/api/server/lib/tunnels/` as the pattern for the contract, and the child-process rules in the `desktop-shell` skill for every spawn.
 
 The runtime's labels are the single source of truth about spaces. The host keeps no state file for them. The host stores place settings, names of secret sources, and archived chats. Service refs under `refs/openchamber/` in the user's repository are allowed, because the start snapshot must survive git's garbage collection to remain the base of the result patch.
 

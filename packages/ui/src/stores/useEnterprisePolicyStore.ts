@@ -1,6 +1,6 @@
 /**
  * Projection of the enterprise policy the connected runtime enforces
- * (`packages/web/server/lib/enterprise-mode.js`, read by the web server and by
+ * (`packages/api/server/lib/enterprise-mode.js`, read by the web server and by
  * the VS Code extension host alike). The runtime is authoritative and refuses
  * what the policy forbids; this store only lets Settings hide those ways in
  * and say who decided. Nothing here is persisted.

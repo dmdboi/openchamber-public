@@ -70,7 +70,7 @@ const isGuestPull = (entry: { thread?: 'issue' | 'pull' }): boolean => (
 
 /**
  * A thread on any other service, linked by an agent through `session.link`
- * (`packages/web/server/lib/github/session-link.js`): a GitLab merge request,
+ * (`packages/api/server/lib/github/session-link.js`): a GitLab merge request,
  * a Jira ticket. Shown by identifier and opened by URL; a GitLab one gets live
  * state from its instance (`getGitLabThreadRef`), others have none.
  */

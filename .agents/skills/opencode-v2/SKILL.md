@@ -25,7 +25,7 @@ the 2.x code, not from memory of 1.x.
   tool's text result and its first-use consent form). These files are the
   only place that knows 2.x wire shapes. Rendering and stores
   read the domain model; fix a missing field there, never with a shim.
-- `packages/web/server/lib/opencode/proxy.js` forwards `/api/*` as-is (2.x
+- `packages/api/server/lib/opencode/proxy.js` forwards `/api/*` as-is (2.x
   serves under `/api` itself) and folds OpenChamber-owned session state into
   the records it serves. `env-runtime.js` launches `opencode serve`.
 - Plugins OpenChamber generates for OpenCode: `plugin-spec.js` and
@@ -92,7 +92,7 @@ sessions (the top-up workaround is enough). Check the newest tag before re-askin
   behaviour: `packages/core/src`, HTTP surface: `packages/server/src/handlers/*`,
   wire types: `packages/schema/src`, `packages/protocol/src/groups`.
 - Minimum supported version: `MINIMUM_OPENCODE_VERSION` in
-  `packages/web/server/lib/opencode/compatibility.js`; raise it when OpenChamber
+  `packages/api/server/lib/opencode/compatibility.js`; raise it when OpenChamber
   starts depending on a route a newer tag added.
 - Pinned version: `opencodeCli.version` in `packages/electron/package.json`
   (the bundled binary) and `@opencode/client` / `@opencode/schema` in the

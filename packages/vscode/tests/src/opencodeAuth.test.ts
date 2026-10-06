@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { configureOpenCodeCredentials, getProviderAuth, openCodeCredentialSource, readOpenCodeCredentials } from '../../src/opencodeAuth';
 
 // The reader and its projection are the web server's and tested there
-// (`packages/web/server/lib/opencode/auth.test.js`); this covers the
+// (`packages/api/server/lib/opencode/auth.test.js`); this covers the
 // extension-host connection.
 describe('VS Code credential source', () => {
   afterEach(() => configureOpenCodeCredentials(null));

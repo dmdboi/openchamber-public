@@ -8,6 +8,8 @@ COPY package.json bun.lock ./
 COPY bun-patches ./bun-patches
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/web/package.json ./packages/web/
+COPY packages/api/package.json ./packages/api/
+COPY packages/cli/package.json ./packages/cli/
 COPY packages/electron/package.json ./packages/electron/
 COPY packages/vscode/package.json ./packages/vscode/
 COPY packages/mobile/package.json ./packages/mobile/

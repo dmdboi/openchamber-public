@@ -109,7 +109,7 @@ server for a grant (`POST /api/fs/preview`) and loads the page from
 cannot reach the app's API, DOM or terminal. Its neighbouring images, styles
 and scripts load through the grant in the path. VS Code renders `srcDoc` in
 the same sandbox. The server side (read root, CORS, CSP) is described in
-`packages/web/server/lib/fs/DOCUMENTATION.md`.
+`packages/api/server/lib/fs/DOCUMENTATION.md`.
 
 The Markdown preview renders the file's raw HTML the way GitHub does
 (`SimpleMarkdownRenderer allowRawHtml`): right after marked, a separate

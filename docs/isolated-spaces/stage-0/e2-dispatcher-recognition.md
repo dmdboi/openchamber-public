@@ -1,6 +1,6 @@
 # E2: how the dispatcher recognises a space request
 
-Method: code reading only, 2026-09-19. Nothing was run. Paths are relative to the repo root. `ui/` means `packages/ui/src/`, `server/` means `packages/web/server/`. SDK lines refer to `@opencode-ai/sdk` 1.18.31, `dist/v2/client.js`.
+Method: code reading only, 2026-09-19. Nothing was run. Paths are relative to the repo root. `ui/` means `packages/ui/src/`, `server/` means `packages/api/server/`. SDK lines refer to `@opencode-ai/sdk` 1.18.31, `dist/v2/client.js`.
 
 ## Verdict
 

@@ -2,7 +2,7 @@ import type { SourceControlReadContext } from '@/lib/source-control/types';
 
 /**
  * Contract for the AI diff walkthrough, mirrored from
- * `packages/web/server/lib/walkthrough`.
+ * `packages/api/server/lib/walkthrough`.
  *
  * Hunk ids are opaque here on purpose: the server owns how they are derived,
  * and the client only ever matches them against the index it is handed.

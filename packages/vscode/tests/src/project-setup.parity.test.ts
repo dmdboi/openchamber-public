@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import * as fromVscode from '../../src/project-setup';
-import * as fromWeb from '../../../web/server/lib/projects/project-setup.js';
+import * as fromWeb from '../../../api/server/lib/projects/project-setup.js';
 import type { SharedProjectConfig } from '../../src/project-setup';
 
 // Every runtime export the canonical module ships. The extension host must

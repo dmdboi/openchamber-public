@@ -5,7 +5,7 @@ import type { Metadata, Session } from '@/lib/opencode/model';
  * "In work", stored under `session.metadata.openchamber.work`. The server's
  * session-work runtime opens a session when Jev sees real work start and
  * stamps `suggestDoneAt` when a turn looks like the end of it; the user alone
- * closes. The shape is owned by `packages/web/server/lib/session-work/state.js`.
+ * closes. The shape is owned by `packages/api/server/lib/session-work/state.js`.
  */
 const workSchema = z.object({
   state: z.enum(['open', 'done']),

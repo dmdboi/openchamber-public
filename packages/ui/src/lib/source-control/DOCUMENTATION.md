@@ -65,7 +65,7 @@ rejects omitted or padded IDs before transport. Provider mutation receipts expos
 server-derived provider-user identity as `actor.providerAccountId`; request
 contexts continue to carry only exact credential and binding authority.
 
-The [binding contract](../../../../web/server/lib/source-control/DOCUMENTATION.md)
+The [binding contract](../../../../api/server/lib/source-control/DOCUMENTATION.md)
 defines capability readiness and the strict persisted store contract. `boundGitNetworkOperation`
 checks the selected remote's readiness and exact saved fetch/push fingerprints,
 not aggregate binding state. Requests carry the current repository config revision;
@@ -83,7 +83,7 @@ Anonymous HTTPS is a transport an identity may carry; identity pickers label it 
 
 Reads distinguish failure from empty success. Failed operations retain data but disable stale inventory selection; explicit buttons remain available for retry. Typed expiry, source-change, mismatch, unavailable, and capacity rejections tell the user to rediscover or repair host state. Runtime-will-change and unmount invalidate pending inventory, discovery, and import results. Runtime changes clear candidates, confirmation, and selection without loading the new host automatically.
 
-The connected OpenChamber server owns discovery and imported copies for web, Electron and both mobile clients. The UI explains that discovery is limited to immediate private-key files in the server user's approved `~/.ssh`, with no recursion, symlink, SSH config, or agent inspection. It points passphrase-protected and agent-only users to explicit unverified System transport. VS Code omits the server inventory capability; its transport is always the user's system Git. All onboarding and error copy is translated in all 11 locales. The [Git module](../../../../web/server/lib/git/DOCUMENTATION.md#exact-ref-transport-authority) owns candidate lifetime, verification, storage, protocol enforcement, rollback, and provisioning constraints.
+The connected OpenChamber server owns discovery and imported copies for web, Electron and both mobile clients. The UI explains that discovery is limited to immediate private-key files in the server user's approved `~/.ssh`, with no recursion, symlink, SSH config, or agent inspection. It points passphrase-protected and agent-only users to explicit unverified System transport. VS Code omits the server inventory capability; its transport is always the user's system Git. All onboarding and error copy is translated in all 11 locales. The [Git module](../../../../api/server/lib/git/DOCUMENTATION.md#exact-ref-transport-authority) owns candidate lifetime, verification, storage, protocol enforcement, rollback, and provisioning constraints.
 
 ## Repository identity
 

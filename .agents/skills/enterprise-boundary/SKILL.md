@@ -7,7 +7,7 @@ description: "Use when a change sends conversation content somewhere other than 
 
 Enterprise mode is an administrator's promise: conversation content reaches only the model providers configured in OpenCode, and nothing opens this machine to others without the administrator's say. The user is not trusted to keep the promise; they may edit their environment, Settings, or install the npm server themselves. Every feature either keeps the promise by construction or answers to the mode.
 
-The mechanism, its sources and the list of gated features live in the header of `packages/web/server/lib/enterprise-mode.js`; the admin-facing contract is the *Enterprise mode* section of `packages/docs/content/docs/security.mdx`. Read both before editing.
+The mechanism, its sources and the list of gated features live in the header of `packages/api/server/lib/enterprise-mode.js`; the admin-facing contract is the *Enterprise mode* section of `packages/docs/content/docs/security.mdx`. Read both before editing.
 
 ## Classify The Change
 

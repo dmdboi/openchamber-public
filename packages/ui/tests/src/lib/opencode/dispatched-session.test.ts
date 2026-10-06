@@ -5,7 +5,7 @@ import { readDispatchedSessionResult } from "../../../../src/lib/opencode/dispat
 import { readSubagentRun } from "../../../../src/lib/opencode/subagent-run"
 import { isBackgroundReportEntry, isSkippedTimelineMessage } from "@/components/chat/lib/timelineRoles"
 
-// The shape `web/server/lib/dispatch-results` admits into the dispatching session.
+// The shape `api/server/lib/dispatch-results` admits into the dispatching session.
 const result = (overrides: Partial<SyntheticMessage> = {}): SyntheticMessage => ({
   id: "msg_result",
   sessionID: "ses_parent",
