@@ -36,7 +36,7 @@ Creating, finding, stopping, starting, and removing isolated spaces on a place, 
 - `labels.js`: label keys, resource names, space ids, tools keys, label parsing.
 - `run-command.js`: the only file that starts a process. Since 4a also `openCommandStream`, a command's stdin and stdout as one duplex stream that an `http.Agent` uses as a socket: the transport of `connect`.
 - `errors.js`: `SpaceError` with a `code`.
-- Test support, never imported by product code: `places/contract-suite.js`, `places/escape-suite.js`, `places/memory-place.js`, `places/fake-docker.js`, `places/docker-live-support.js`, and since 3a `code-in-bait.js`, the bait repository and the host state that code in must leave alone. Since 3b `code-in-bait.js` also holds the stand-in for a space in a local folder that the unit tests of both directions use, and knows what code out may change in the user's repository.
+- Test support, never imported by product code: `tests/server/lib/spaces/places/contract-suite.js`, `tests/server/lib/spaces/places/escape-suite.js`, `tests/server/lib/spaces/places/memory-place.js`, `tests/server/lib/spaces/places/fake-docker.js`, `tests/server/lib/spaces/places/docker-live-support.js`, and since 3a `tests/server/lib/spaces/code-in-bait.js`, the bait repository and the host state that code in must leave alone. Since 3b `tests/server/lib/spaces/code-in-bait.js` also holds the stand-in for a space in a local folder that the unit tests of both directions use, and knows what code out may change in the user's repository.
 
 ## Place contract
 
@@ -1168,10 +1168,12 @@ The answer has `mediaType: application/vnd.oci.image.index.v1+json` and lists ma
 ## Tests
 
 ```
-bun run --cwd packages/web test -- server/lib/spaces
-OPENCHAMBER_TEST_DOCKER=1 bun run --cwd packages/web test -- server/lib/spaces
-OPENCHAMBER_TEST_DOCKER_PACKED=1 bun run --cwd packages/web test -- server/lib/spaces/places/packed
+bun run --cwd packages/web test -- tests/server/lib/spaces
+OPENCHAMBER_TEST_DOCKER=1 bun run --cwd packages/web test -- tests/server/lib/spaces
+OPENCHAMBER_TEST_DOCKER_PACKED=1 bun run --cwd packages/web test -- tests/server/lib/spaces/places/packed
 ```
+
+Test files live under `packages/web/tests/server/lib/spaces/`; a `places/…` name below is a file in `packages/web/tests/server/lib/spaces/places/`.
 
 The second command also runs the live files against the local Docker daemon: `places/contract.docker.live.test.js`, `places/escape.docker.live.test.js`, `places/server.docker.live.test.js`, and since 3a `places/code-in.docker.live.test.js`. Since 3b it also runs `places/code-out.docker.live.test.js`, since 4a `places/dispatcher.docker.live.test.js`, since 4b `places/sessions.docker.live.test.js`, and since 5b `places/grants.docker.live.test.js`: a space made through the journey, a real key behind the window against the stand-in upstream, which sees its hash, the key absent from the record, both containers' metadata and everything the space can read, a turn of OpenCode inside arriving at the stand-in with the key, a provider granted after the instance started, measured, and the grants said again after a stop and a start. The escape suite gained two tests in 5b: a neighbour on the outer network refused on the gatekeeper's outer address on all three ports while the space still reaches both listeners by name, and an opened domain that gets no credential from the window. The third runs `places/packed.docker.live.test.js`. It compiles the sdk and packs the local `web` and `sdk`, so it needs the workspace dependencies installed.
 

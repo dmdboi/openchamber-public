@@ -36,7 +36,7 @@ Adding a new WS endpoint (or porting one, e.g. the planned terminal port) requir
 
 ## Wire Format And Codec Branch
 
-- **Two implementations must stay byte-compatible.** The E2EE and framing exist as TS (`packages/ui/src/lib/relay/{crypto,handshake,tunnel-codec}.ts`, normative) and a JS host mirror (`packages/web/server/lib/relay/{e2ee,tunnel-codec}.js`). Any wire-format, frame-type, handshake, or batching change must update **both** and keep `packages/web/server/lib/relay/cross-compat.test.js` green.
+- **Two implementations must stay byte-compatible.** The E2EE and framing exist as TS (`packages/ui/src/lib/relay/{crypto,handshake,tunnel-codec}.ts`, normative) and a JS host mirror (`packages/web/server/lib/relay/{e2ee,tunnel-codec}.js`). Any wire-format, frame-type, handshake, or batching change must update **both** and keep `packages/web/tests/server/lib/relay/cross-compat.test.js` green.
 - **Frame types live in `protocol.ts`** and must match across `protocol.ts`, `tunnel-codec.ts`, and `tunnel-codec.js`. Adding a frame type without mirroring it corrupts the stream on one side.
 - **Frame batching is capability-negotiated** in the handshake with a legacy fallback, so mixed client/host app versions still interoperate. Preserve the negotiation and the single-frame fallback; do not make batching unconditional.
 - **The encrypted-frame counter/IV is per-direction and strictly increasing.** One encrypted WS message = one encrypt call = one counter tick. Keep encrypt+send serialized per direction; do not reorder or parallelize it.

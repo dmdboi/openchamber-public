@@ -155,7 +155,7 @@ These modules hold reusable, non-presentational logic for commands.
 For CLI behavior changes, run the focused CLI suite from `packages/web`:
 
 ```sh
-bun run test -- bin/cli.test.js
+bun run test -- tests/bin/cli.test.js
 ```
 
 Before finalizing source changes that affect CLI behavior, also run:

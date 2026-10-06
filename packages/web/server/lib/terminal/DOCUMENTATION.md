@@ -53,9 +53,9 @@ The WebSocket path must remain in both `isUrlAuthWebSocketPath` and relay `ALLOW
 Run:
 
 ```sh
-bun test packages/web/server/lib/terminal/runtime.test.js packages/web/server/lib/terminal/terminal-ws-protocol.test.js
-bun run --cwd packages/web test server/lib/terminal/shutdown.test.js
-bun test packages/web/server/lib/ui-auth/ui-auth.test.js packages/web/server/lib/relay/cross-compat.test.js
+bun test packages/web/tests/server/lib/terminal/runtime.test.js packages/web/tests/server/lib/terminal/terminal-ws-protocol.test.js
+bun run --cwd packages/web test tests/server/lib/terminal/shutdown.test.js
+bun test packages/web/tests/server/lib/ui-auth/ui-auth.test.js packages/web/tests/server/lib/relay/cross-compat.test.js
 ```
 
 The #3389 macOS ARM64 reproduction used real Electron 43.7.0 PTYs and HTTP

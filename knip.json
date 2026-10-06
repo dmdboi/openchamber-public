@@ -34,14 +34,13 @@
         "src/mini-chat-main.tsx",
         "src/main.tsx",
         "src/sw.ts",
-        "bin/**/*.{test,spec}.{js,cjs,mjs}",
-        "server/**/*.{test,spec}.{js,cjs,mjs}",
-        "src/**/*.{test,spec}.{ts,tsx}"
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
       ],
       "project": [
         "bin/**/*.js",
         "server/**/*.{js,mjs,cjs}",
-        "src/**/*.{ts,tsx}"
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{js,mjs,cjs,ts,tsx}"
       ]
     },
     "packages/electron": {
