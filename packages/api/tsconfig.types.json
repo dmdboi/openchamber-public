@@ -5,11 +5,9 @@
     "moduleResolution": "NodeNext",
     "strict": true,
     "skipLibCheck": false,
-    "noEmit": true,
-    "allowJs": true
+    "noEmit": true
   },
   "files": [
-    "server/lib/source-control/binding-contract.d.ts",
-    "server/lib/network-defaults.contract.ts"
+    "server/lib/source-control/binding-contract.d.ts"
   ]
 }

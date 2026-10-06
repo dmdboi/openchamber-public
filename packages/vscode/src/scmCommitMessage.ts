@@ -5,7 +5,7 @@ import { execGit } from './bridge-git-process-runtime';
 import { readMagicPromptOverrides, readSettings } from './bridge-settings-runtime';
 import { formatCommitMessageForScm, selectCommitFilePaths } from './git-commit-message';
 import { getGitStatus } from './gitService';
-import type { API as GitAPI, GitExtension, Repository } from './git-api-types';
+import type { API as GitAPI, GitExtension, Repository } from './git.d';
 import type { OpenCodeManager } from './opencode';
 
 const localize = vscode.l10n.t;

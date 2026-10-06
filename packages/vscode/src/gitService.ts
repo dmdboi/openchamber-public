@@ -25,7 +25,7 @@ import type {
   GitWorktreeValidationError,
   GitWorktreeValidationResult,
 } from '@openchamber/contracts/git';
-import type { API as GitAPI, Repository, GitExtension, Status } from './git-api-types';
+import type { API as GitAPI, Repository, GitExtension, Status } from './git.d';
 
 let gitApi: GitAPI | null = null;
 let gitExtensionEnabled = false;
@@ -806,7 +806,6 @@ type WorktreeListEntry = {
   branch?: string;
 };
 
-export type { GitWorktreeValidationResult } from '@openchamber/contracts/git';
 
 export interface CreateGitWorktreePayload {
   mode?: 'new' | 'existing';
