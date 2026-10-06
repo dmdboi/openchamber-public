@@ -64,9 +64,11 @@ const JSONC_FILE = /(?:^|\/)(?:knip\.json|[jt]sconfig(?:\.[^/]*)?\.json|\.vscode
 const LINT_SCOPES = [
   'packages/sdk/src/',
   'packages/sdk/examples/',
+  'packages/sdk/tests/',
   'packages/ui/src/',
   'packages/vscode/src/',
   'packages/vscode/webview/',
+  'packages/vscode/tests/',
   'packages/web/src/',
 ];
 

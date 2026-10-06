@@ -43,6 +43,8 @@ test('classifyFile routes each supported extension', () => {
 test('classifyFile lints TypeScript only inside a package lint scope', () => {
   assert.equal(classifyFile('packages/sdk/examples/panel/index.ts'), 'eslint');
   assert.equal(classifyFile('packages/vscode/webview/main.tsx'), 'eslint');
+  assert.equal(classifyFile('packages/sdk/tests/src/manifest.test.ts'), 'eslint');
+  assert.equal(classifyFile('packages/vscode/tests/src/bridge.test.ts'), 'eslint');
   assert.equal(classifyFile('packages/electron/main.ts'), null);
   assert.equal(classifyFile('tools/oxlint/rule.ts'), null);
   assert.equal(classifyFile('vite.config.ts'), null);
