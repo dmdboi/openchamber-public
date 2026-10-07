@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { GitIdentitySummary as GitIdentitySummaryContract } from '@openchamber/contracts/git';
 
 export const gitIdentityProfileIdSchema = z.string().trim().min(1).max(200);
 const profileTextSchema = z.string().trim().min(1).max(512);
@@ -74,9 +75,9 @@ export const gitIdentityProfilesSchema = z.array(gitIdentityProfileSchema).max(2
 export const gitIdentitySummarySchema = z.object({
   userName: z.string().max(512).nullable(),
   userEmail: z.string().max(512).nullable(),
-}).strict();
+}).strict() satisfies z.ZodType<Pick<GitIdentitySummaryContract, 'userName' | 'userEmail'>>;
 
-export type GitIdentitySummary = z.infer<typeof gitIdentitySummarySchema>;
+export type GitIdentitySummary = Pick<GitIdentitySummaryContract, 'userName' | 'userEmail'>;
 
 export const gitIdentityMutationResultSchema = z.object({
   success: z.boolean(),

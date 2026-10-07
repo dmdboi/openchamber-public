@@ -1,4 +1,4 @@
-import type { SourceControlRepositoryBinding, SourceControlRepositoryContext } from '../../../../ui/src/lib/source-control/types';
+import type { SourceControlRepositoryBinding, SourceControlRepositoryContext } from '@openchamber/contracts';
 
 type StoredRemote = SourceControlRepositoryBinding['remotes'][number] extends infer Remote
   ? Remote extends unknown ? Omit<Remote, 'presentation' | 'inherited'> : never

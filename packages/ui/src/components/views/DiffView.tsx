@@ -18,8 +18,8 @@ import { coerceDiffScope, isBranchScopeAvailable, isBranchScopeDefinitelyUnavail
 import { getRuntimeKey } from '@/lib/runtime-switch';
 import { cn } from '@/lib/utils';
 import { normalizePath } from '@/lib/pathNormalization';
-import type { GitStatus, GitSubmoduleState } from '@/lib/api/types';
-import { GitPathUnavailableError, type GitPathUnavailableReason } from '@/lib/api/git-path-diff';
+import type { GitPathUnavailable, GitStatus, GitSubmoduleState } from '@/lib/api/types';
+import { GitPathUnavailableError } from '@/lib/api/git-path-diff';
 import { SubmoduleDiffSummary } from './SubmoduleDiffSummary';
 import {
     DropdownMenu,
@@ -101,7 +101,7 @@ type DiffData = {
 /** An unavailable path is a stale or non-file status row, not a failed request. */
 type DiffLoadFailure =
     | { kind: 'error'; message: string }
-    | { kind: 'unavailable'; reason: GitPathUnavailableReason };
+    | GitPathUnavailable;
 type DiffScope = 'all' | PendingDiffScope;
 
 type TurnSnapshotDiff = {

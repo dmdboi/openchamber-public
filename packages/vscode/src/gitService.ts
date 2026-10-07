@@ -14,6 +14,23 @@ import { execGit as executeGit } from './bridge-git-process-runtime';
 import { readConfig } from './opencodeConfig';
 import { resolveWorktreeDirectory } from './worktree-directory';
 import { readSubmoduleState, resolveGitPathTarget, type GitPathUnavailable, type GitSubmoduleState } from './gitPathDiff';
+import type {
+  GitBranchBase,
+  GitBranchDetails,
+  GitCommitResult,
+  GitIdentitySummary,
+  GitLogEntry,
+  GitMergeResult,
+  GitRebaseResult,
+  GitRemote,
+  GitMergeInProgress,
+  GitRebaseInProgress,
+  GitStatusBase,
+  GitStatusFile,
+  GitWorktreeIdentity,
+  GitWorktreeValidationError,
+  GitWorktreeValidationResult,
+} from '@openchamber/contracts/git';
 import type { API as GitAPI, Repository, GitExtension, Status } from './git.d';
 
 let gitApi: GitAPI | null = null;
@@ -369,42 +386,7 @@ export async function isLinkedWorktree(directory: string): Promise<boolean> {
 
 // ============== Status Operations ==============
 
-interface GitStatusFile {
-  path: string;
-  index: string;
-  working_dir: string;
-}
-
-interface GitMergeInProgress {
-  /** Short SHA of MERGE_HEAD */
-  head: string;
-  /** First line of MERGE_MSG */
-  message: string;
-}
-
-interface GitRebaseInProgress {
-  /** Branch name being rebased */
-  headName: string;
-  /** Short SHA of the onto commit */
-  onto: string;
-}
-
-export interface GitStatusResult {
-  current: string;
-  tracking: string | null;
-  ahead: number;
-  behind: number;
-  files: GitStatusFile[];
-  isClean: boolean;
-  diffStats?: {
-    staged: Record<string, { insertions: number; deletions: number }>;
-    working: Record<string, { insertions: number; deletions: number }>;
-  };
-  /** Present when a merge is in progress with conflicts */
-  mergeInProgress?: GitMergeInProgress | null;
-  /** Present when a rebase is in progress */
-  rebaseInProgress?: GitRebaseInProgress | null;
-}
+export type GitStatusResult = GitStatusBase;
 
 type GitStatusOptions = {
   mode?: 'light';
@@ -633,21 +615,7 @@ async function getGitStatusRaw(directory: string): Promise<GitStatusResult> {
 
 // ============== Branch Operations ==============
 
-interface GitBranchDetails {
-  current: boolean;
-  name: string;
-  commit: string;
-  label: string;
-  tracking?: string;
-  ahead?: number;
-  behind?: number;
-}
-
-export interface GitBranchResult {
-  all: string[];
-  current: string;
-  branches: Record<string, GitBranchDetails>;
-}
+export type GitBranchResult = GitBranchBase;
 
 export async function getGitUnpushedBranchCounts(directory: string, requestedBranches: string[]): Promise<{ counts: Record<string, number> }> {
   const requested = [...new Set(requestedBranches)].filter(Boolean).slice(0, 5);
@@ -831,11 +799,7 @@ export async function deleteRemoteBranch(directory: string, branch: string, remo
 
 // ============== Worktree Operations ==============
 
-export interface GitWorktreeInfo {
-  head: string;
-  name: string;
-  branch: string;
-  path: string;
+export interface GitWorktreeCreateResult extends GitWorktreeIdentity {
   directoryCreated?: true;
   bootstrapStatus?: WorktreeBootstrapStatus;
   sourceFetchFailed?: true;
@@ -848,19 +812,6 @@ type WorktreeListEntry = {
   branch?: string;
 };
 
-interface GitWorktreeValidationError {
-  code: string;
-  message: string;
-}
-
-export interface GitWorktreeValidationResult {
-  ok: boolean;
-  errors: GitWorktreeValidationError[];
-  resolved?: {
-    mode?: 'new' | 'existing';
-    localBranch?: string | null;
-  };
-}
 
 export interface CreateGitWorktreePayload {
   mode?: 'new' | 'existing';
@@ -1722,7 +1673,7 @@ const applyUpstreamConfiguration = async (args: {
 /**
  * List all worktrees for a repository
  */
-export async function listGitWorktrees(directory: string): Promise<GitWorktreeInfo[]> {
+export async function listGitWorktrees(directory: string): Promise<GitWorktreeIdentity[]> {
   const directoryPath = normalizeDirectoryPath(directory);
   if (!directoryPath || !fs.existsSync(directoryPath) || !fs.existsSync(path.join(directoryPath, '.git'))) {
     return [];
@@ -1893,7 +1844,7 @@ const assertWorktreeCreatePreflight = async (directory: string, input: CreateGit
   throw new Error(message);
 };
 
-export async function previewWorktreeCreate(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeInfo> {
+export async function previewWorktreeCreate(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const context = await resolveWorktreeProjectContext(directory);
   await fs.promises.mkdir(context.worktreeRoot, { recursive: true });
@@ -1919,7 +1870,7 @@ async function attachGitWorktreeToCandidate(
   context: Awaited<ReturnType<typeof resolveWorktreeProjectContext>>,
   candidate: { name: string; directory: string; branch: string },
   input: CreateGitWorktreePayload = {},
-): Promise<GitWorktreeInfo> {
+): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const preferredBranchName = cleanBranchName(String(input?.branchName || '').trim());
   const startRef = normalizeStartRef(input?.startRef);
@@ -2153,7 +2104,7 @@ const prepareWorktreeCreateSource = async (
   }
 };
 
-export async function createWorktree(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeInfo> {
+export async function createWorktree(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const context = await resolveWorktreeProjectContext(directory);
 
@@ -2199,7 +2150,7 @@ export async function createWorktree(directory: string, input: CreateGitWorktree
     });
     trackWorktreeBootstrapTask(candidate.directory, task);
 
-    const result: GitWorktreeInfo = {
+    const result: GitWorktreeCreateResult = {
       head: '',
       name: candidate.name,
       branch: localBranch,
@@ -2817,17 +2768,6 @@ export async function applyGitHunk(
 
 // ============== Commit Operations ==============
 
-export interface GitCommitResult {
-  success: boolean;
-  commit: string;
-  branch: string;
-  summary: {
-    changes: number;
-    insertions: number;
-    deletions: number;
-  };
-}
-
 /**
  * Create a git commit
  */
@@ -3273,20 +3213,6 @@ export async function gitFetch(
 
 // ============== Log Operations ==============
 
-export interface GitLogEntry {
-  hash: string;
-  date: string;
-  message: string;
-  refs: string;
-  body: string;
-  author_name: string;
-  author_email: string;
-  filesChanged: number;
-  insertions: number;
-  deletions: number;
-  parents: string[];
-}
-
 /**
  * Resolve a log base ref using local-first semantics (mirrors web service.js).
  *
@@ -3574,12 +3500,6 @@ export async function getCommitFileDiff(
 
 // ============== Git Identity Operations ==============
 
-export interface GitIdentitySummary {
-  userName: string | null;
-  userEmail: string | null;
-  sshCommand: string | null;
-}
-
 /**
  * Get current git identity for a directory
  */
@@ -3709,12 +3629,6 @@ export async function setGitIdentity(
 
 // ============== Remote Operations ==============
 
-export interface GitRemote {
-  name: string;
-  fetchUrl: string;
-  pushUrl: string;
-}
-
 /**
  * Get list of remotes
  */
@@ -3764,18 +3678,6 @@ export async function removeRemote(directory: string, remote: string): Promise<{
 }
 
 // ============== Merge & Rebase Operations ==============
-
-export interface GitMergeResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
-
-export interface GitRebaseResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
 
 /**
  * Rebase current branch onto target

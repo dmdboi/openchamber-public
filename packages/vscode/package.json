@@ -304,6 +304,7 @@
     "vite": "^7.1.2"
   },
   "dependencies": {
+    "@openchamber/contracts": "workspace:*",
     "@openchamber/ui": "workspace:*",
     "@opencode/client": "2.0.23",
     "adm-zip": "^0.6.0",
