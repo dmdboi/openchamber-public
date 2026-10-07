@@ -2,6 +2,7 @@ import path from 'node:path';
 import { availableParallelism } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { configDefaults, defineConfig } from 'vitest/config';
+import { vitestCiReport } from '../../scripts/vitest-ci-report.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const maxWorkers = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -21,7 +22,10 @@ export default defineConfig({
       { find: 'bun:test', replacement: path.resolve(here, '../../test-shims/bun-test.ts') },
       { find: 'node:test', replacement: path.resolve(here, '../../test-shims/node-test.ts') },
       { find: /^bun$/, replacement: path.resolve(here, '../../test-shims/bun.ts') },
-      { find: '@openchamber/sdk/schemas', replacement: path.resolve(here, '../sdk/src/schemas.ts') },
+      {
+        find: '@openchamber/sdk/schemas',
+        replacement: path.resolve(here, '../sdk/src/schemas.ts'),
+      },
       { find: '@openchamber/sdk', replacement: path.resolve(here, '../sdk/src/index.ts') },
       { find: '@openchamber/ui/tests', replacement: path.resolve(here, './tests') },
       { find: '@openchamber/ui', replacement: path.resolve(here, './src') },
@@ -29,6 +33,7 @@ export default defineConfig({
     ],
   },
   test: {
+    ...vitestCiReport('ui', ['src/sync/**/*.{ts,tsx}']),
     maxWorkers,
     setupFiles: ['./tests/vitest.setup.ts'],
     include: [...configDefaults.include, 'tests/src/**/*.vitest.tsx'],

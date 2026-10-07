@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-bundle/
+build/
+out/
+coverage/
+ios/
+android/
+bun.lock
+packages/*/package-lock.json

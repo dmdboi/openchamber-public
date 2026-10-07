@@ -91,12 +91,12 @@ Run commands from the project root unless a section says otherwise.
 
 ### Web
 
-| Script | Description | Ports |
-|--------|-------------|-------|
-| `bun run dev` | Default web HMR dev flow. | auto-selected dev ports |
-| `bun run dev:web:full` | Build watcher + Express server. No HMR — manual refresh after changes. | `3001` (server + static) |
-| `bun run dev:web:hmr` | Vite dev server + Express API. **Open the Vite URL for HMR**, not the backend. | `5180` (Vite HMR), `3902` (API) |
-| `bun run start:web` | Start the packaged web server. | `3000` by default |
+| Script                 | Description                                                                    | Ports                           |
+| ---------------------- | ------------------------------------------------------------------------------ | ------------------------------- |
+| `bun run dev`          | Default web HMR dev flow.                                                      | auto-selected dev ports         |
+| `bun run dev:web:full` | Build watcher + Express server. No HMR — manual refresh after changes.         | `3001` (server + static)        |
+| `bun run dev:web:hmr`  | Vite dev server + Express API. **Open the Vite URL for HMR**, not the backend. | `5180` (Vite HMR), `3902` (API) |
+| `bun run start:web`    | Start the packaged web server.                                                 | `3000` by default               |
 
 Both are configurable via env vars: `OPENCHAMBER_PORT`, `OPENCHAMBER_HMR_UI_PORT`, `OPENCHAMBER_HMR_API_PORT`.
 
@@ -144,16 +144,16 @@ bun run lint:ui
 
 ## Build And Package Commands
 
-| Command | What it does |
-|---------|--------------|
-| `bun run build` | Build all workspaces |
-| `bun run build:web` | Build only `packages/web` |
-| `bun run build:ui` | Build only `packages/ui` |
+| Command                  | What it does                                             |
+| ------------------------ | -------------------------------------------------------- |
+| `bun run build`          | Build all workspaces                                     |
+| `bun run build:web`      | Build only `packages/web`                                |
+| `bun run build:ui`       | Build only `packages/ui`                                 |
 | `bun run build:electron` | Run Electron package build script without full packaging |
-| `bun run electron:build` | Build packaged desktop app for the current OS |
-| `bun run vscode:build` | Build the VS Code extension |
-| `bun run vscode:package` | Package the VS Code extension as `.vsix` |
-| `bun run pack:web` | Create a package archive for `@openchamber/web` |
+| `bun run electron:build` | Build packaged desktop app for the current OS            |
+| `bun run vscode:build`   | Build the VS Code extension                              |
+| `bun run vscode:package` | Package the VS Code extension as `.vsix`                 |
+| `bun run pack:web`       | Create a package archive for `@openchamber/web`          |
 
 ## Platform Build Notes
 
@@ -190,6 +190,7 @@ The final AppImage verifier checks desktop identity and the architecture of Elec
 ```bash
 bun run type-check   # Must pass
 bun run lint         # Repo-wide Oxlint plus JavaScript entrypoint syntax checks
+bun run format:check -- path/to/file.ts
 bun run test         # Must pass
 bun run build        # Must succeed
 ```
@@ -200,6 +201,11 @@ that scope. `bun run lint:anti-slop` is a separate, optional check with its own
 incremental rules and existing backlog; it is not part of the required lint
 command. Package `lint` scripts remain available for focused checks.
 
+Prettier is available through `bun run format -- <paths>` and
+`bun run format:check -- <paths>`. CI checks the formatting setup and Vitest
+reporting/config files added here. The rest of the repository has not been
+reformatted yet.
+
 `bun run test` runs every suite in the repository on Vitest: the root scripts,
 shared UI, VS Code, Electron, SDK, web/server, API and CLI. It runs the UI and
 API suites together, since they take most of the time and use separate
@@ -208,6 +214,9 @@ cannot leak between files by load order. The suites that need Bun (SDK, UI,
 VS Code, root scripts) run Vitest under `bun --bun`. Run a single file while
 iterating (`bunx vitest run <file>` from the package, or
 `bun run --cwd packages/ui vitest run <file>`).
+In CI, Vitest writes JUnit timing reports for every suite and coverage summaries
+for API tracked-items and UI sync code. The test job uploads them as the
+`vitest-reports` artifact. Coverage is informational and has no threshold.
 
 For docs-only changes, validation may be enough:
 

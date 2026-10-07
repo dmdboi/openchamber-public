@@ -2,6 +2,7 @@ import path from 'node:path';
 import { availableParallelism } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { configDefaults, defineConfig } from 'vitest/config';
+import { vitestCiReport } from '../../scripts/vitest-ci-report.ts';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const maxWorkers = Math.max(1, Math.min(4, availableParallelism() - 1));
@@ -21,6 +22,7 @@ export default defineConfig({
     ],
   },
   test: {
+    ...vitestCiReport('sdk'),
     maxWorkers,
     include: [...configDefaults.include, 'tests/**/*.test.{ts,js}'],
     testTimeout: 30_000,
