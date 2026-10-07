@@ -189,10 +189,16 @@ The final AppImage verifier checks desktop identity and the architecture of Elec
 
 ```bash
 bun run type-check   # Must pass
-bun run lint         # Must pass
+bun run lint         # Repo-wide Oxlint plus JavaScript entrypoint syntax checks
 bun run test         # Must pass
 bun run build        # Must succeed
 ```
+
+`bun run lint` runs the general-purpose Oxlint config once across the linted
+TypeScript packages, then checks the JavaScript entrypoints that remain outside
+that scope. `bun run lint:anti-slop` is a separate, optional check with its own
+incremental rules and existing backlog; it is not part of the required lint
+command. Package `lint` scripts remain available for focused checks.
 
 `bun run test` runs every suite in the repository on Vitest: the root scripts,
 shared UI, VS Code, Electron, SDK, web/server, API and CLI. It runs the UI and
