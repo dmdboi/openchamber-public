@@ -1,0 +1,240 @@
+// The provider reads behind tracked items, each answering one batch in the
+// service's terms: `ok` with GitHub-shaped summaries, `disconnected` when no
+// account on that host can answer, `unavailable` when it should be asked
+// again later. Accounts are the ones the app is signed in to now, the way
+// linked items have always been read.
+
+import { z } from 'zod';
+import type { JsonValue } from '@opencode/client';
+import { jsonValueSchema } from './items.js';
+import type { TrackedItemState } from './items.js';
+
+export interface TrackedThreadRef {
+  owner: string;
+  repo: string;
+  number: number;
+}
+
+export interface TrackedGithubReadInput {
+  accountId?: string | null;
+  pulls: TrackedThreadRef[];
+  issues: TrackedThreadRef[];
+}
+
+export interface TrackedGitlabReadInput {
+  instance: string;
+  accountId?: string | null;
+  pulls: TrackedThreadRef[];
+  issues: TrackedThreadRef[];
+}
+
+export interface TrackedLinearReadInput {
+  identifiers: string[];
+}
+
+export interface TrackedReaderOkResult {
+  status: 'ok';
+  pulls?: TrackedItemState[];
+  issues?: TrackedItemState[];
+}
+
+export interface TrackedReaderDisconnectedResult {
+  status: 'disconnected';
+}
+
+export interface TrackedReaderUnavailableResult {
+  status: 'unavailable';
+  retryAfterMs?: number;
+}
+
+export type TrackedReaderResult =
+  | TrackedReaderOkResult
+  | TrackedReaderDisconnectedResult
+  | TrackedReaderUnavailableResult;
+
+/**
+ * A provider answer may be nothing at all: the JavaScript providers are
+ * untyped, so the service decodes every answer before trusting its shape.
+ */
+export type TrackedReaderAnswer = TrackedReaderResult | null | undefined;
+
+export interface TrackedReaderAnswers {
+  github(input: TrackedGithubReadInput): Promise<TrackedReaderAnswer>;
+  gitlab(input: TrackedGitlabReadInput): Promise<TrackedReaderAnswer>;
+  linear(input: TrackedLinearReadInput): Promise<TrackedReaderAnswer>;
+}
+
+/** The decoded shape of a value a provider threw, whatever its class. */
+export interface ProviderError {
+  status?: number;
+  response?: {
+    status?: number;
+    headers?: Headers | Record<string, string | number>;
+  };
+  errors?: JsonValue[];
+  message?: string;
+}
+
+export interface GitHubReaderModule {
+  getOctokitForAccountId(accountId: string): Promise<{ octokit: JsonValue } | null>;
+  getOctokitOrNull(): Promise<JsonValue | null>;
+}
+
+export interface GitHubSummariesModule {
+  fetchPrSummaries(input: {
+    octokit: JsonValue;
+    refs: TrackedThreadRef[];
+    issueRefs: TrackedThreadRef[];
+  }): Promise<{ summaries: TrackedItemState[]; issueSummaries: TrackedItemState[] }>;
+  isGraphqlRateLimitError(error: ProviderError): boolean;
+}
+
+export interface GitHubRateLimitModule {
+  isGitHubRateLimited(): boolean;
+  isGitHubRateLimitError(error: ProviderError): boolean;
+  noteGitHubRateLimit(error: ProviderError): void;
+}
+
+export interface LinearReaderModule {
+  getLinearIssueSummaries(identifiers: string[]): Promise<{ connected?: boolean; issues?: TrackedItemState[] }>;
+}
+
+export interface GitLabLiveSummariesInput {
+  instance: string;
+  accountId?: string | null;
+  refs: TrackedThreadRef[];
+  issueRefs: TrackedThreadRef[];
+}
+
+export interface GitLabLiveSummariesResult {
+  connected: boolean;
+  summaries?: TrackedItemState[];
+  issueSummaries?: TrackedItemState[];
+}
+
+export type GitLabLiveSummariesReader = (
+  input: GitLabLiveSummariesInput,
+) => Promise<GitLabLiveSummariesResult>;
+
+/**
+ * `readGitLabLiveSummaries({ instance, refs, issueRefs })` comes from the
+ * GitLab routes, which own GitLab accounts and their reconciliation.
+ */
+export interface TrackedItemReaderDependencies {
+  loadGitHub?: () => Promise<GitHubReaderModule>;
+  loadGitHubSummaries?: () => Promise<GitHubSummariesModule>;
+  loadGitHubRateLimit?: () => Promise<GitHubRateLimitModule>;
+  loadLinear?: () => Promise<LinearReaderModule>;
+  readGitLabLiveSummaries?: GitLabLiveSummariesReader;
+}
+
+const providerHeadersSchema = z.union([
+  z.custom<Headers>((value) => Object.prototype.toString.call(value) === '[object Headers]'),
+  z.record(z.string(), z.union([z.string(), z.number()])),
+]);
+
+const providerErrorSchema = z.object({
+  status: z.number().optional(),
+  response: z.object({
+    status: z.number().optional(),
+    headers: providerHeadersSchema.optional(),
+  }).optional(),
+  errors: z.array(jsonValueSchema).optional(),
+  message: z.string().optional(),
+});
+
+/** Decodes a thrown value into the fields the rate-limit recognizers read. */
+const decodeProviderError = (cause: unknown): ProviderError | null => {
+  const parsed = providerErrorSchema.safeParse(cause);
+  return parsed.success ? parsed.data : null;
+};
+
+const callable = (member: JsonValue | undefined): boolean =>
+  Object.prototype.toString.call(member) === '[object Function]';
+
+const moduleNamespace = (cause: unknown): { [name: string]: JsonValue | undefined } | null => {
+  if (Object.prototype.toString.call(cause) !== '[object Module]') return null;
+  // SAFETY: an ES module namespace is a null-prototype object whose exports are
+  // its properties; a missing export reads as undefined.
+  return cause as { [name: string]: JsonValue | undefined };
+};
+
+const hasCallables = (cause: unknown, names: readonly string[]): boolean => {
+  const namespace = moduleNamespace(cause);
+  return namespace !== null && names.every((name) => callable(namespace[name]));
+};
+
+const githubReaderModuleSchema = z.custom<GitHubReaderModule>(
+  (candidate) => hasCallables(candidate, ['getOctokitOrNull', 'getOctokitForAccountId']),
+);
+const githubSummariesModuleSchema = z.custom<GitHubSummariesModule>(
+  (candidate) => hasCallables(candidate, ['fetchPrSummaries', 'isGraphqlRateLimitError']),
+);
+const githubRateLimitModuleSchema = z.custom<GitHubRateLimitModule>(
+  (candidate) => hasCallables(candidate, ['isGitHubRateLimited', 'isGitHubRateLimitError', 'noteGitHubRateLimit']),
+);
+const linearReaderModuleSchema = z.custom<LinearReaderModule>(
+  (candidate) => hasCallables(candidate, ['getLinearIssueSummaries']),
+);
+
+// The default loaders pull the real JavaScript modules at call time and decode
+// their namespace against a contract, rather than casting an untyped import.
+const loadModule = async <TModule>(specifier: string, decode: z.ZodType<TModule>): Promise<TModule> => {
+  const loaded: unknown = await import(specifier);
+  const parsed = decode.safeParse(loaded);
+  if (!parsed.success) throw new Error(`provider module ${specifier} does not match its contract`);
+  return parsed.data;
+};
+
+export function createTrackedItemReaders({
+  loadGitHub = () => loadModule('../github/index.js', githubReaderModuleSchema),
+  loadGitHubSummaries = () => loadModule('../github/pr-summaries.js', githubSummariesModuleSchema),
+  loadGitHubRateLimit = () => loadModule('../github/rate-limit.js', githubRateLimitModuleSchema),
+  loadLinear = () => loadModule('../linear/index.js', linearReaderModuleSchema),
+  readGitLabLiveSummaries,
+}: TrackedItemReaderDependencies = {}): TrackedReaderAnswers {
+  return {
+    async github({ accountId = null, pulls, issues }) {
+      const [github, summaries, rateLimit] = await Promise.all([
+        loadGitHub(), loadGitHubSummaries(), loadGitHubRateLimit(),
+      ]);
+      if (rateLimit.isGitHubRateLimited()) return { status: 'unavailable' };
+      // A bound repository is read with its own account, a linked item with the current one.
+      const octokit = accountId
+        ? (await github.getOctokitForAccountId(accountId))?.octokit ?? null
+        : await github.getOctokitOrNull();
+      if (!octokit) return { status: 'disconnected' };
+      try {
+        const { summaries: pullsAnswered, issueSummaries } = await summaries.fetchPrSummaries({ octokit, refs: pulls, issueRefs: issues });
+        return { status: 'ok', pulls: pullsAnswered, issues: issueSummaries };
+      } catch (cause) {
+        // Any thrown value is decoded: a plain object with a status is handled
+        // exactly like an Error subclass, and anything else is rethrown.
+        const error = decodeProviderError(cause);
+        if (error) {
+          if ((error.status ?? error.response?.status) === 401) return { status: 'disconnected' };
+          if (summaries.isGraphqlRateLimitError(error) || rateLimit.isGitHubRateLimitError(error)) {
+            // The shared cooldown also holds back every other GitHub read.
+            rateLimit.noteGitHubRateLimit(error);
+            return { status: 'unavailable' };
+          }
+        }
+        throw cause;
+      }
+    },
+
+    async gitlab({ instance, accountId = null, pulls, issues }) {
+      if (!(readGitLabLiveSummaries instanceof Function)) return { status: 'disconnected' };
+      const result = await readGitLabLiveSummaries({ instance, accountId, refs: pulls, issueRefs: issues });
+      if (!result.connected) return { status: 'disconnected' };
+      return { status: 'ok', pulls: result.summaries, issues: result.issueSummaries };
+    },
+
+    async linear({ identifiers }) {
+      const { getLinearIssueSummaries } = await loadLinear();
+      const result = await getLinearIssueSummaries(identifiers);
+      if (!result?.connected) return { status: 'disconnected' };
+      return { status: 'ok', issues: result.issues };
+    },
+  };
+}

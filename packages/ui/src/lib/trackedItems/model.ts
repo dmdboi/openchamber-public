@@ -4,7 +4,7 @@ import type { GitHubIssueLiveSummary, GitHubPullRequestLiveSummary, LinearIssueL
 /**
  * A pull request, merge request or issue whose live state the server follows
  * for this client. The key is the server's: `trackedItemKey` here and in
- * `packages/api/server/lib/tracked-items/items.js` must agree.
+ * `packages/api/server/lib/tracked-items/items.ts` must agree.
  */
 /**
  * `accountId` names the account a repository is bound to (a branch's pull
