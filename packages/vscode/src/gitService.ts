@@ -17,6 +17,12 @@ import { readSubmoduleState, resolveGitPathTarget, type GitPathUnavailable, type
 import type {
   GitBranchBase,
   GitBranchDetails,
+  GitCommitResult,
+  GitIdentitySummary,
+  GitLogEntry,
+  GitMergeResult,
+  GitRebaseResult,
+  GitRemote,
   GitMergeInProgress,
   GitRebaseInProgress,
   GitStatusBase,
@@ -793,7 +799,7 @@ export async function deleteRemoteBranch(directory: string, branch: string, remo
 
 // ============== Worktree Operations ==============
 
-export interface GitWorktreeInfo extends GitWorktreeIdentity {
+export interface GitWorktreeCreateResult extends GitWorktreeIdentity {
   directoryCreated?: true;
   bootstrapStatus?: WorktreeBootstrapStatus;
   sourceFetchFailed?: true;
@@ -1667,7 +1673,7 @@ const applyUpstreamConfiguration = async (args: {
 /**
  * List all worktrees for a repository
  */
-export async function listGitWorktrees(directory: string): Promise<GitWorktreeInfo[]> {
+export async function listGitWorktrees(directory: string): Promise<GitWorktreeIdentity[]> {
   const directoryPath = normalizeDirectoryPath(directory);
   if (!directoryPath || !fs.existsSync(directoryPath) || !fs.existsSync(path.join(directoryPath, '.git'))) {
     return [];
@@ -1838,7 +1844,7 @@ const assertWorktreeCreatePreflight = async (directory: string, input: CreateGit
   throw new Error(message);
 };
 
-export async function previewWorktreeCreate(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeInfo> {
+export async function previewWorktreeCreate(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const context = await resolveWorktreeProjectContext(directory);
   await fs.promises.mkdir(context.worktreeRoot, { recursive: true });
@@ -1864,7 +1870,7 @@ async function attachGitWorktreeToCandidate(
   context: Awaited<ReturnType<typeof resolveWorktreeProjectContext>>,
   candidate: { name: string; directory: string; branch: string },
   input: CreateGitWorktreePayload = {},
-): Promise<GitWorktreeInfo> {
+): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const preferredBranchName = cleanBranchName(String(input?.branchName || '').trim());
   const startRef = normalizeStartRef(input?.startRef);
@@ -2098,7 +2104,7 @@ const prepareWorktreeCreateSource = async (
   }
 };
 
-export async function createWorktree(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeInfo> {
+export async function createWorktree(directory: string, input: CreateGitWorktreePayload = {}): Promise<GitWorktreeCreateResult> {
   const mode = input?.mode === 'existing' ? 'existing' : 'new';
   const context = await resolveWorktreeProjectContext(directory);
 
@@ -2144,7 +2150,7 @@ export async function createWorktree(directory: string, input: CreateGitWorktree
     });
     trackWorktreeBootstrapTask(candidate.directory, task);
 
-    const result: GitWorktreeInfo = {
+    const result: GitWorktreeCreateResult = {
       head: '',
       name: candidate.name,
       branch: localBranch,
@@ -2762,17 +2768,6 @@ export async function applyGitHunk(
 
 // ============== Commit Operations ==============
 
-export interface GitCommitResult {
-  success: boolean;
-  commit: string;
-  branch: string;
-  summary: {
-    changes: number;
-    insertions: number;
-    deletions: number;
-  };
-}
-
 /**
  * Create a git commit
  */
@@ -3218,20 +3213,6 @@ export async function gitFetch(
 
 // ============== Log Operations ==============
 
-export interface GitLogEntry {
-  hash: string;
-  date: string;
-  message: string;
-  refs: string;
-  body: string;
-  author_name: string;
-  author_email: string;
-  filesChanged: number;
-  insertions: number;
-  deletions: number;
-  parents: string[];
-}
-
 /**
  * Resolve a log base ref using local-first semantics (mirrors web service.js).
  *
@@ -3519,12 +3500,6 @@ export async function getCommitFileDiff(
 
 // ============== Git Identity Operations ==============
 
-export interface GitIdentitySummary {
-  userName: string | null;
-  userEmail: string | null;
-  sshCommand: string | null;
-}
-
 /**
  * Get current git identity for a directory
  */
@@ -3654,12 +3629,6 @@ export async function setGitIdentity(
 
 // ============== Remote Operations ==============
 
-export interface GitRemote {
-  name: string;
-  fetchUrl: string;
-  pushUrl: string;
-}
-
 /**
  * Get list of remotes
  */
@@ -3709,18 +3678,6 @@ export async function removeRemote(directory: string, remote: string): Promise<{
 }
 
 // ============== Merge & Rebase Operations ==============
-
-export interface GitMergeResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
-
-export interface GitRebaseResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
 
 /**
  * Rebase current branch onto target

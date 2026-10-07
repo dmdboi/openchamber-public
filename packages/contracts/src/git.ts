@@ -1,10 +1,9 @@
 /**
- * Git API wire shapes shared by the shared UI and the VS Code extension host.
+ * Git API wire shapes shared by the API server, shared UI, and VS Code host.
  *
- * These are the fields every runtime answers. A runtime with more to report
- * extends the base on its own type, so an absent optional field means "this
- * runtime did not report it", not "the value is zero". Runtime-only fields
- * stay next to the adapter that produces them.
+ * Shared fields live here. A runtime with more to report extends the base on
+ * its own type, so an absent optional field means "this runtime did not report
+ * it", not "the value is zero". Runtime-only fields stay with their adapter.
  */
 
 /** One file entry from a Git status read. */
@@ -12,6 +11,69 @@ export interface GitStatusFile {
   path: string;
   index: string;
   working_dir: string;
+}
+
+/** Summary fields returned after a commit or pull. */
+export interface GitCommitSummary {
+  changes: number;
+  insertions: number;
+  deletions: number;
+}
+
+export interface GitCommitResult {
+  success: boolean;
+  commit: string;
+  branch: string;
+  summary: GitCommitSummary;
+}
+
+/** A remote name and the URLs returned by that runtime. */
+export interface GitRemote {
+  name: string;
+  fetchUrl: string;
+  pushUrl: string;
+}
+
+export interface GitMergeResult {
+  success: boolean;
+  conflict?: boolean;
+  conflictFiles?: string[];
+}
+
+export interface GitRebaseResult {
+  success: boolean;
+  conflict?: boolean;
+  conflictFiles?: string[];
+}
+
+export interface GitLogEntry {
+  hash: string;
+  date: string;
+  message: string;
+  refs: string;
+  body: string;
+  author_name: string;
+  author_email: string;
+  filesChanged: number;
+  insertions: number;
+  deletions: number;
+  parents: string[];
+}
+
+/** VS Code may report the local SSH command; the API server deliberately omits it. */
+export interface GitIdentitySummary {
+  userName: string | null;
+  userEmail: string | null;
+  sshCommand?: string | null;
+}
+
+/** Reasons a status path cannot be diffed in one of the supported runtimes. */
+export type GitPathUnavailableReason = 'path_not_found' | 'nested_repository' | 'untracked_directory';
+
+/** Shared unavailable-path discriminator; runtimes may add diagnostic fields. */
+export interface GitPathUnavailable {
+  kind: 'unavailable';
+  reason: GitPathUnavailableReason;
 }
 
 /** A merge in progress with conflicts. */

@@ -2,16 +2,14 @@
 // extension host. Keep these templates aligned with
 // `packages/ui/src/lib/magicPrompts.ts` (`git.commit.generate.*`).
 
+import type { GitStatusFile } from '@openchamber/contracts/git';
+
+export type { GitStatusFile } from '@openchamber/contracts/git';
+
 export const COMMIT_DIFF_FILE_LIMIT = 30;
 export const COMMIT_DIFF_TOTAL_CHAR_LIMIT = 120_000;
 export const COMMIT_STYLE_SAMPLE_COUNT = 10;
 const COMMIT_STYLE_SUBJECT_CHAR_LIMIT = 200;
-
-export type GitStatusFileLike = {
-  path: string;
-  index: string;
-  working_dir: string;
-};
 
 export type GeneratedCommitMessage = {
   subject: string;
@@ -51,11 +49,11 @@ const isMeaningfulStatus = (value: string): boolean => {
   return token.length > 0 && token !== '?' && token !== '!';
 };
 
-export const commitPathUsesStagedDiff = (file: GitStatusFileLike | undefined): boolean => {
+export const commitPathUsesStagedDiff = (file: GitStatusFile | undefined): boolean => {
   return Boolean(file && isMeaningfulStatus(file.index));
 };
 
-export const selectCommitFilePaths = (files: GitStatusFileLike[]): string[] => {
+export const selectCommitFilePaths = (files: GitStatusFile[]): string[] => {
   const staged: string[] = [];
   const unstaged: string[] = [];
   for (const file of files) {

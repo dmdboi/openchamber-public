@@ -8,6 +8,7 @@ import type {
   CreateChangeRequestInput,
   Issue,
   IssueComment,
+  Label,
   MergeChangeRequestInput,
   PageResult,
   ProjectUpstream,
@@ -38,6 +39,12 @@ import type {
 
 import type {
   GitBranchBase,
+  GitCommitResult,
+  GitCommitSummary,
+  GitLogEntry,
+  GitMergeResult,
+  GitRebaseResult,
+  GitRemote,
   GitRemoteComparison,
   GitStatusBase,
   GitSubmoduleState,
@@ -51,12 +58,18 @@ export type {
   GitIdentitySummary,
   GitIdentityTransport,
 } from './git-identity';
-// The Git wire shapes the shared UI and the VS Code extension host both answer.
+// The Git wire shapes shared by the API server, UI, and VS Code host.
 // Richer UI-only fields stay on the interfaces below.
 export type {
+  GitCommitResult,
   GitBranchDetails,
+  GitLogEntry,
+  GitMergeResult,
   GitMergeInProgress,
+  GitPathUnavailable,
   GitRebaseInProgress,
+  GitRebaseResult,
+  GitRemote,
   GitRemoteComparison,
   GitSubmoduleState,
   GitWorktreeValidationResult,
@@ -277,19 +290,6 @@ export type GitBranchListOptions = { remote?: 'local' };
 
 export interface GitBranch extends GitBranchBase {
   defaultBranches?: Record<string, string>;
-}
-
-interface GitCommitSummary {
-  changes: number;
-  insertions: number;
-  deletions: number;
-}
-
-export interface GitCommitResult {
-  success: boolean;
-  commit: string;
-  branch: string;
-  summary: GitCommitSummary;
 }
 
 export interface GitPushResult {
@@ -709,20 +709,6 @@ export interface GitStashEntry {
   hash: string;
 }
 
-export interface GitRemote {
-  name: string;
-  /** Redacted display URL. Never includes HTTP userinfo, query data, or fragments. */
-  fetchUrl: string;
-  /** Redacted display URL. Never includes HTTP userinfo, query data, or fragments. */
-  pushUrl: string;
-}
-
-export interface GitMergeResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
-
 export interface CheckoutCommitResponse {
   success: boolean;
 }
@@ -743,12 +729,6 @@ export interface ResetToCommitResponse {
   success: boolean;
 }
 
-export interface GitRebaseResult {
-  success: boolean;
-  conflict?: boolean;
-  conflictFiles?: string[];
-}
-
 export interface MergeConflictDetails {
   /** Git status --porcelain output showing current state */
   statusPorcelain: string;
@@ -762,20 +742,6 @@ export interface MergeConflictDetails {
   operation: 'merge' | 'rebase';
 }
 
-
-export interface GitLogEntry {
-  hash: string;
-  date: string;
-  message: string;
-  refs: string;
-  body: string;
-  author_name: string;
-  author_email: string;
-  filesChanged: number;
-  insertions: number;
-  deletions: number;
-  parents: string[];
-}
 
 export interface GitLogResponse {
   all: GitLogEntry[];
@@ -1500,10 +1466,7 @@ export type GitHubIssueLiveSummary = GitHubPullRequestRef & {
 };
 
 
-export type GitHubIssueLabel = {
-  name: string;
-  color?: string;
-};
+export type GitHubIssueLabel = Label;
 
 export type GitHubRepoSelector = {
   owner: string;
@@ -1687,15 +1650,7 @@ type GitHubAuthAccount = {
   status?: 'valid' | 'invalid';
 };
 
-export type GitHubDeviceFlowStart = {
-  flowId: string;
-  userCode: string;
-  verificationUri: string;
-  verificationUriComplete?: string;
-  expiresIn: number;
-  interval: number;
-  scope?: string;
-};
+export type GitHubDeviceFlowStart = SourceControlDeviceFlowStart;
 
 export type GitHubDeviceFlowComplete =
   | { connected: true; user: GitHubUserSummary; scope?: string }

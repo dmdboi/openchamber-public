@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import type { GitSubmoduleState } from '@openchamber/contracts/git';
+import type {
+  GitPathUnavailable as GitPathUnavailableBase,
+  GitSubmoduleState,
+} from '@openchamber/contracts/git';
 
 /**
  * Classifies a path from `git status` before diffing it, matching the web
@@ -14,9 +17,9 @@ type GitRunner = (args: string[], cwd: string) => Promise<{ stdout: string; stde
 
 export type { GitSubmoduleState } from '@openchamber/contracts/git';
 
-export type GitPathUnavailableReason = 'path_not_found' | 'nested_repository';
-
-export type GitPathUnavailable = { kind: 'unavailable'; reason: GitPathUnavailableReason; message: string };
+export interface GitPathUnavailable extends GitPathUnavailableBase {
+  message: string;
+}
 
 type GitPathTarget =
   | { kind: 'file' | 'submodule'; repoPath: string; absolutePath: string }

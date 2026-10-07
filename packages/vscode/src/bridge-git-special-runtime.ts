@@ -15,7 +15,7 @@ import {
   commitPathUsesStagedDiff,
   selectCommitFilePaths,
   type GeneratedCommitMessage,
-  type GitStatusFileLike,
+  type GitStatusFile,
 } from './git-commit-message';
 
 type BridgeMessageInput = {
@@ -163,7 +163,7 @@ const collectRecentCommitSubjects = async (directory: string): Promise<string> =
 const collectSelectedFileDiffs = async (
   directory: string,
   files: string[],
-  statusFiles: GitStatusFileLike[],
+  statusFiles: GitStatusFile[],
   execGit: SpecialGitDeps['execGit'],
 ): Promise<string> => {
   const statusByPath = new Map(statusFiles.map((file) => [file.path, file]));

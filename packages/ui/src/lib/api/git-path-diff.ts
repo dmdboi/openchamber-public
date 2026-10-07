@@ -1,12 +1,11 @@
 import { z } from 'zod';
+import type { GitPathUnavailableReason } from '@openchamber/contracts/git';
 
 /**
  * Why a path from an earlier status listing has no diff: it no longer exists
  * anywhere git looks, it is a separate repository nested in this one, or it is
  * a directory of untracked files the listing kept as one `dir/` entry.
  */
-export type GitPathUnavailableReason = 'path_not_found' | 'nested_repository' | 'untracked_directory';
-
 export class GitPathUnavailableError extends Error {
   readonly reason: GitPathUnavailableReason;
 
