@@ -399,7 +399,7 @@ export async function handleConfigBridgeMessage(
     }
 
     // GET/PUT /api/config/websearch — see the web routes in
-    // packages/web/server/lib/opencode/routes.js.
+    // packages/api/server/lib/opencode/routes.js.
     case 'api:config/websearch': {
       // SAFETY: every field is checked before use: `method` against a literal,
       // `directory` by resolveWorkingDirectory, `selection` by parseWebSearchSelection.
@@ -416,7 +416,7 @@ export async function handleConfigBridgeMessage(
     }
 
     // PUT /api/config/warming — see the web route in
-    // packages/web/server/lib/opencode/routes.js.
+    // packages/api/server/lib/opencode/routes.js.
     case 'api:config/warming': {
       const enabled = (payload as { enabled?: unknown } | undefined)?.enabled;
       if (typeof enabled !== 'boolean') {

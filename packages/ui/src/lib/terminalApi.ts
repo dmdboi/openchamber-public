@@ -116,7 +116,7 @@ const decode = (data: RelayTunnelSocketMessageEvent['data']): TerminalMessage | 
 /**
  * Server error code for a terminal request whose working directory no longer
  * exists (a deleted worktree). Mirrors `TERMINAL_CWD_MISSING_CODE` in
- * `packages/web/server/lib/terminal/runtime.js`.
+ * `packages/api/server/lib/terminal/runtime.js`.
  */
 const TERMINAL_CWD_MISSING_CODE = 'TERMINAL_CWD_MISSING';
 

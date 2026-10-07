@@ -19,9 +19,10 @@
       "@openchamber/sdk/schemas": ["../sdk/src/schemas.ts"],
       "@/*": ["../ui/src/*", "./src/*"],
       "@web/*": ["./src/*"],
+      "@openchamber/ui/tests/*": ["../ui/tests/*"],
       "@openchamber/ui/*": ["../ui/src/*"],
       "@openchamber/web/*": ["./src/*"]
     }
   },
-  "include": ["src", "../ui/src", "../ui/src/types/**/*"]
+  "include": ["src", "tests", "../ui/src", "../ui/src/types/**/*"]
 }

@@ -25,7 +25,7 @@ Browser-owned URLs cannot attach the normal `Authorization` header. Use short-li
 - Never manually append `oc_url_token`.
 - Never place a long-lived client bearer token in a URL.
 - Treat `oc_client_token` query use as legacy stripping/rejection only.
-- Add browser-readable GET or realtime paths to the narrow allowlist in `packages/web/server/lib/ui-auth/ui-auth.js`.
+- Add browser-readable GET or realtime paths to the narrow allowlist in `packages/api/server/lib/ui-auth/ui-auth.js`.
 - Add allowlist tests; never allow arbitrary `/api/*` URL-token access.
 
 ## Showing Somebody Else's Page
@@ -37,7 +37,7 @@ internals — which ages badly and fails silently.
 
 - The in-app browser renders a real Chromium `<webview>` (`packages/ui/src/components/browser/`).
 - A dev server on a remote OpenChamber host is reached by binding a local port
-  and tunnelling raw bytes (`packages/web/server/lib/dev-tunnel/`), so the page
+  and tunnelling raw bytes (`packages/api/server/lib/dev-tunnel/`), so the page
   keeps its own origin at the root of its own host.
 - Runtimes without a Chromium host fall back to a plain iframe that can display
   a page but cannot inspect one. State that limit; do not emulate around it.
@@ -48,7 +48,7 @@ internals — which ages badly and fails silently.
 
 Prefer focused coverage in:
 
-- `packages/ui/src/lib/runtime-url.test.ts`
-- `packages/ui/src/lib/runtime-auth.test.ts`
-- `packages/web/server/lib/ui-auth/ui-auth.test.js`
-- `packages/web/server/lib/dev-tunnel/tunnel.test.js`
+- `packages/ui/tests/src/lib/runtime-url.test.ts`
+- `packages/ui/tests/src/lib/runtime-auth.test.ts`
+- `packages/web/tests/server/lib/ui-auth/ui-auth.test.js`
+- `packages/web/tests/server/lib/dev-tunnel/tunnel.test.js`

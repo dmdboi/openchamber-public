@@ -76,9 +76,10 @@ export const useSessionActions = (args: Args) => {
   } = args;
 
   React.useEffect(() => {
+    const copyTimeoutRef = copyTimeout;
     return () => {
-      if (copyTimeout.current) {
-        clearTimeout(copyTimeout.current);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
       }
     };
   }, []);

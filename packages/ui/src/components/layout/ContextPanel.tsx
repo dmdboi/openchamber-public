@@ -915,7 +915,7 @@ export const ContextPanel: React.FC = () => {
       closeLabel: t('contextPanel.tab.closeTabAria', { label }),
       preview: tab.preview,
     };
-  }), [activeModeTabs, effectiveDirectory, faviconByOrigin, sessionTitleById, t]);
+  }), [activeModeTabs, effectiveDirectory, faviconByOrigin, sessionTitleById, tabT, t]);
 
   const activeNonChatContent = activeTab?.mode === 'context'
         ? <ContextPanelContent />

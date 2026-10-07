@@ -18,9 +18,11 @@
 //   node scripts/run-isolated-tests.mjs --files <file> [...files]
 //
 // `--files` runs exactly the listed files, which is how the pre-commit hook
-// tests only the staged test files. Each file keeps its own process, and its
-// working directory is the nearest package.json directory so Bun and Node read
-// the config a package script would. Directory mode is unchanged.
+// tests only the staged test files. Both modes give each file its own process
+// and run it from the nearest package.json directory, so Bun and Node read the
+// config a package script would. That lets one directory-mode invocation span
+// several packages (the root `test` script passes every isolated suite root at
+// once) without the working directory drifting to the caller's.
 
 import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
@@ -62,9 +64,9 @@ const resolveCommand = (file) => {
   return null;
 };
 
-// The package a test belongs to, found from its nearest package.json. Explicit
-// mode runs each file there so `bun test` and `node --test` resolve the same
-// directory a package script would.
+// The package a test belongs to, found from its nearest package.json. Every
+// file runs there so `bun test` and `node --test` resolve the same directory a
+// package script would.
 const packageRootFor = (file) => {
   let directory = path.dirname(file);
   while (true) {
@@ -187,7 +189,7 @@ const worker = async () => {
     }
     const { code, output, dropped, timedOut } = await run({
       ...resolved,
-      cwd: explicitMode ? packageRootFor(file) : undefined,
+      cwd: packageRootFor(file),
     });
     if (dropped > 0) console.error(`NOISY (${resolved.label}) ${relative}: ${dropped} characters of output dropped`);
     if (timedOut) {

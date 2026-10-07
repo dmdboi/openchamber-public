@@ -73,7 +73,7 @@ High-value anchors:
 
 - Sync: `packages/ui/src/sync/DOCUMENTATION.md`
 - Stores: `packages/ui/src/stores/DOCUMENTATION.md`
-- CLI: `packages/web/bin/lib/DOCUMENTATION.md`
+- CLI: `packages/cli/bin/lib/DOCUMENTATION.md`
 - Performance measurement tooling: `scripts/perf/DOCUMENTATION.md`
 - VS Code runtime: `packages/vscode/src/DOCUMENTATION.md`
 - Electron: `packages/electron/README.md`
@@ -155,28 +155,10 @@ current evidence for the final PR HEAD; do not make the reviewer reconstruct
 intent, affected surfaces, validation, visual behavior, or failure and
 rollback considerations from the diff alone.
 
-A **product decision** belongs to the maintainer and is settled before the code,
-never inside the diff. A product decision is anything where two reasonable people
-could disagree about whether it should exist or how it should behave: a new
-button, panel, setting or command; a changed default; a shortcut or gesture that
-now does something else; different wording, ordering or grouping in the UI;
-anything that turns existing behavior on or off for everyone. Removing or
-bypassing behavior the code marks as deliberate is one too, and there the first
-question is whether it is a defect at all. A crash, wrong data, behavior that
-contradicts what it plainly claims, or a performance fix that keeps behavior
-identical is a bug, not a product decision.
-
-Where that decision is settled depends on who is working:
-
-- **Working with the maintainer or a team member** (anyone with repository
-  access): raise the product question in the session and get an answer there.
-  The decision already happened off GitHub; no discussion thread and no link is
-  expected on the pull request.
-- **Working as an outside contributor**: the decision happens in an agreed
-  [Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas)
-  before the code, linked from the pull request. Without the maintainer's
-  go-ahead such a pull request is not reviewed, and a discussion opened
-  afterwards to describe finished work is closed along with it.
-
-When the call is unclear, ask before building. Deciding it silently is the one
-thing that is always wrong.
+Settle product decisions before coding. A team member or the maintainer raises
+the question in the session and gets an answer there, with no discussion thread
+or link expected on the pull request; an outside contributor opens an agreed
+[Ideas discussion](https://github.com/openchamber/openchamber/discussions/categories/ideas)
+before the code and links it from the pull request. The full process is in
+[`CONTRIBUTING.md`](./CONTRIBUTING.md#before-you-start); when the call is unclear,
+ask before building.

@@ -39,7 +39,7 @@ export type ProjectSetupStore = {
 const PROJECT_ID_PATTERN = /^[a-zA-Z0-9._:-]+$/;
 
 // Mirror of `projectConfigFileStemOf` in the server's
-// `packages/web/server/lib/projects/project-id.js`; keep the two in sync. The
+// `packages/api/server/lib/projects/project-id.js`; keep the two in sync. The
 // file is named by the id while that fits a file name; a `path_<base64url>`
 // id grows with the checkout path, so a long one maps to a fixed-length
 // digest instead of a name the filesystem rejects (ENAMETOOLONG).

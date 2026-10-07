@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { runtimeFetch } from '@/lib/runtime-fetch';
 
 // Full-text search over the server's conversations
-// (packages/web/server/lib/message-search). The server keeps the index; this
+// (packages/api/server/lib/message-search). The server keeps the index; this
 // module asks it and parses the answer once, at the boundary.
 
 // Snippets mark each match with these private-use characters (server

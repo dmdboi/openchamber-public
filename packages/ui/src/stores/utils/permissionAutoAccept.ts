@@ -3,7 +3,7 @@ import type { Session } from "@/lib/opencode/model";
 
 /**
  * How a session answers tool permissions. The server owns the policy
- * (`packages/web/server/lib/permission-auto-accept`):
+ * (`packages/api/server/lib/permission-auto-accept`):
  *
  * - `ask`: every request waits for the user.
  * - `safety`: accepted unless the safety net (Jev) says the user should decide.

@@ -1,7 +1,7 @@
 /**
  * Managed OpenCode process registry + orphan reaper.
  *
- * Shared with packages/web/server/lib/opencode/managed-process-registry.js via
+ * Shared with packages/api/server/lib/opencode/managed-process-registry.js via
  * esbuild bundling. Keep this module as a thin re-export so web and VS Code
  * cannot diverge: a process spawned by any runtime (web, desktop, VS Code) must
  * be reapable by any other, which only holds while all runtimes read and write
@@ -13,4 +13,4 @@ export {
   registerManagedProcess,
   unregisterManagedProcess,
   reapOrphanedProcesses,
-} from '../../web/server/lib/opencode/managed-process-registry.js';
+} from '../../api/server/lib/opencode/managed-process-registry.js';

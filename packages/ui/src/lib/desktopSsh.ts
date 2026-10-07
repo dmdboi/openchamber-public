@@ -1,11 +1,39 @@
+import { z } from 'zod';
+
 import { hasDesktopInvoke, invokeDesktop } from '@/lib/desktop';
 
-type DesktopInvoke = (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+/**
+ * A parsed JSON value. IPC payloads cross a process boundary, so every field is
+ * decoded through this domain type before it is interpreted.
+ */
+type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
+  ]),
+);
+
+const jsonObjectSchema = z.record(z.string(), jsonValueSchema);
+const stringSchema = z.string();
+const numberSchema = z.number();
+const booleanSchema = z.boolean();
+const jsonArraySchema = z.array(jsonValueSchema);
+
+type DesktopInvoke = (command: string, args?: JsonObject) => Promise<JsonValue>;
 
 type DesktopBridgeGlobal = {
   listen?: (
     event: string,
-    handler: (evt: { payload?: unknown }) => void,
+    handler: (event: { payload?: JsonValue }) => void,
   ) => Promise<() => void>;
 };
 
@@ -99,101 +127,106 @@ export type DesktopSshImportCandidate = {
   sshCommand: string;
 };
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null;
+/** Decode a JSON value as an object, or null when it is an array or primitive. */
+const asJsonObject = (value: JsonValue): JsonObject | null => {
+  const parsed = jsonObjectSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 };
 
-const readString = (obj: Record<string, unknown>, key: string): string | null => {
-  const value = obj[key];
-  return typeof value === 'string' ? value : null;
+const readString = (obj: JsonObject, key: string): string | null => {
+  const parsed = stringSchema.safeParse(obj[key]);
+  return parsed.success ? parsed.data : null;
 };
 
-const readNumber = (obj: Record<string, unknown>, key: string): number | null => {
-  const value = obj[key];
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+const readNumber = (obj: JsonObject, key: string): number | null => {
+  const parsed = numberSchema.safeParse(obj[key]);
+  return parsed.success && Number.isFinite(parsed.data) ? parsed.data : null;
 };
 
-const readBoolean = (obj: Record<string, unknown>, key: string): boolean | null => {
-  const value = obj[key];
-  return typeof value === 'boolean' ? value : null;
+const readBoolean = (obj: JsonObject, key: string): boolean | null => {
+  const parsed = booleanSchema.safeParse(obj[key]);
+  return parsed.success ? parsed.data : null;
 };
 
-const asStringArray = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value.filter((item): item is string => typeof item === 'string');
+/** The string elements of a JSON array; non-arrays and non-string elements are dropped. */
+const asStringArray = (value: JsonValue): string[] => {
+  const parsed = jsonArraySchema.safeParse(value);
+  if (!parsed.success) return [];
+  const result: string[] = [];
+  for (const item of parsed.data) {
+    const text = stringSchema.safeParse(item);
+    if (text.success) result.push(text.data);
+  }
+  return result;
 };
 
 const getInvoke = (): DesktopInvoke | null => {
   if (!hasDesktopInvoke()) return null;
-  return (command, args) => invokeDesktop(command, args) as Promise<unknown>;
+  return (command, args) => invokeDesktop<JsonValue>(command, args);
 };
 
-const parseStoredSecret = (value: unknown): DesktopSshStoredSecret | undefined => {
-  if (!isRecord(value)) return undefined;
-  const enabled = readBoolean(value, 'enabled') ?? false;
-  const rawStore = readString(value, 'store')?.toLowerCase();
+const parseStoredSecret = (value: JsonValue): DesktopSshStoredSecret | undefined => {
+  const raw = asJsonObject(value);
+  if (!raw) return undefined;
+  const enabled = readBoolean(raw, 'enabled') ?? false;
+  const rawStore = readString(raw, 'store')?.toLowerCase();
   const store: DesktopSshSecretStore = rawStore === 'settings' ? 'settings' : 'never';
-  const rawValue = readString(value, 'value');
-  return {
-    enabled,
-    store,
-    ...(rawValue ? { value: rawValue } : {}),
-  };
+  const storedValue = readString(raw, 'value');
+  const secret: DesktopSshStoredSecret = { enabled, store };
+  if (storedValue) secret.value = storedValue;
+  return secret;
 };
 
-const parseForwardType = (value: unknown): DesktopSshPortForwardType => {
+const parseForwardType = (value: string | null): DesktopSshPortForwardType => {
   return value === 'remote' || value === 'dynamic' ? value : 'local';
 };
 
-const parseForward = (value: unknown): DesktopSshPortForward | null => {
-  if (!isRecord(value)) return null;
-  const id = readString(value, 'id');
+const parseForward = (value: JsonValue): DesktopSshPortForward | null => {
+  const raw = asJsonObject(value);
+  if (!raw) return null;
+  const id = readString(raw, 'id');
   if (!id) return null;
-  const enabled = readBoolean(value, 'enabled') ?? true;
-  const type = parseForwardType(readString(value, 'type'));
-  const localHost = readString(value, 'localHost') || readString(value, 'local_host') || undefined;
-  const localPort = readNumber(value, 'localPort') ?? readNumber(value, 'local_port') ?? undefined;
-  const remoteHost = readString(value, 'remoteHost') || readString(value, 'remote_host') || undefined;
-  const remotePort = readNumber(value, 'remotePort') ?? readNumber(value, 'remote_port') ?? undefined;
-  return {
-    id,
-    enabled,
-    type,
-    ...(localHost ? { localHost } : {}),
-    ...(typeof localPort === 'number' ? { localPort } : {}),
-    ...(remoteHost ? { remoteHost } : {}),
-    ...(typeof remotePort === 'number' ? { remotePort } : {}),
-  };
+  const enabled = readBoolean(raw, 'enabled') ?? true;
+  const type = parseForwardType(readString(raw, 'type'));
+  const forward: DesktopSshPortForward = { id, enabled, type };
+  const localHost = readString(raw, 'localHost') || readString(raw, 'local_host');
+  if (localHost) forward.localHost = localHost;
+  const localPort = readNumber(raw, 'localPort') ?? readNumber(raw, 'local_port');
+  if (localPort !== null) forward.localPort = localPort;
+  const remoteHost = readString(raw, 'remoteHost') || readString(raw, 'remote_host');
+  if (remoteHost) forward.remoteHost = remoteHost;
+  const remotePort = readNumber(raw, 'remotePort') ?? readNumber(raw, 'remote_port');
+  if (remotePort !== null) forward.remotePort = remotePort;
+  return forward;
 };
 
-const parseInstance = (value: unknown): DesktopSshInstance | null => {
-  if (!isRecord(value)) return null;
-  const id = readString(value, 'id');
-  const sshCommand = readString(value, 'sshCommand') || readString(value, 'ssh_command');
+const parseInstance = (value: JsonValue): DesktopSshInstance | null => {
+  const raw = asJsonObject(value);
+  if (!raw) return null;
+  const id = readString(raw, 'id');
+  const sshCommand = readString(raw, 'sshCommand') || readString(raw, 'ssh_command');
   if (!id || !sshCommand) return null;
-  const nickname = readString(value, 'nickname');
+  const nickname = readString(raw, 'nickname');
 
-  const parsedRaw = value.sshParsed;
-  const parsed = isRecord(parsedRaw)
+  const parsedRecord = asJsonObject(raw.sshParsed ?? null);
+  const parsed = parsedRecord
     ? {
-        destination: readString(parsedRaw, 'destination') || '',
-        args: asStringArray(parsedRaw.args),
+        destination: readString(parsedRecord, 'destination') || '',
+        args: asStringArray(parsedRecord.args ?? null),
       }
     : undefined;
 
-  const remoteRaw = isRecord(value.remoteOpenchamber)
-    ? value.remoteOpenchamber
-    : isRecord(value.remote_openchamber)
-      ? value.remote_openchamber
-      : {};
+  const remoteRaw =
+    asJsonObject(raw.remoteOpenchamber ?? null) ??
+    asJsonObject(raw.remote_openchamber ?? null) ??
+    {};
 
-  const localRaw = isRecord(value.localForward)
-    ? value.localForward
-    : isRecord(value.local_forward)
-      ? value.local_forward
-      : {};
+  const localRaw =
+    asJsonObject(raw.localForward ?? null) ??
+    asJsonObject(raw.local_forward ?? null) ??
+    {};
 
-  const authRaw = isRecord(value.auth) ? value.auth : {};
+  const authRaw = asJsonObject(raw.auth ?? null) ?? {};
 
   const rawMode = readString(remoteRaw, 'mode')?.toLowerCase();
   const mode: DesktopSshRemoteMode = rawMode === 'external' ? 'external' : 'managed';
@@ -212,10 +245,10 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
   const bindHost: '127.0.0.1' | 'localhost' | '0.0.0.0' =
     bindHostRaw === 'localhost' || bindHostRaw === '0.0.0.0' ? bindHostRaw : '127.0.0.1';
 
-  const forwardsRaw = Array.isArray(value.portForwards)
-    ? value.portForwards
-    : Array.isArray(value.port_forwards)
-      ? value.port_forwards
+  const forwardsRaw = Array.isArray(raw.portForwards)
+    ? raw.portForwards
+    : Array.isArray(raw.port_forwards)
+      ? raw.port_forwards
       : [];
 
   const portForwards = forwardsRaw
@@ -227,42 +260,46 @@ const parseInstance = (value: unknown): DesktopSshInstance | null => {
   const remoteBindHost: '127.0.0.1' | '0.0.0.0' = rawRemoteBindHost === '0.0.0.0' ? '0.0.0.0' : '127.0.0.1';
   const preferredLocalPort =
     readNumber(localRaw, 'preferredLocalPort') ?? readNumber(localRaw, 'preferred_local_port');
-  const sshPassword = parseStoredSecret(authRaw.sshPassword || authRaw.ssh_password);
-  const openchamberPassword = parseStoredSecret(authRaw.openchamberPassword || authRaw.openchamber_password);
+  const sshPassword = parseStoredSecret(authRaw.sshPassword || authRaw.ssh_password || null);
+  const openchamberPassword = parseStoredSecret(authRaw.openchamberPassword || authRaw.openchamber_password || null);
 
-  return {
+  const remoteOpenchamber: DesktopSshInstance['remoteOpenchamber'] = {
+    mode,
+    keepRunning: readBoolean(remoteRaw, 'keepRunning') ?? readBoolean(remoteRaw, 'keep_running') ?? true,
+    bindHost: remoteBindHost,
+    installMethod,
+    uploadBundleOverSsh:
+      readBoolean(remoteRaw, 'uploadBundleOverSsh') ??
+      readBoolean(remoteRaw, 'upload_bundle_over_ssh') ??
+      false,
+  };
+  if (preferredPort) remoteOpenchamber.preferredPort = preferredPort;
+
+  const localForward: DesktopSshInstance['localForward'] = { bindHost };
+  if (preferredLocalPort) localForward.preferredLocalPort = preferredLocalPort;
+
+  const auth: DesktopSshInstance['auth'] = {};
+  if (sshPassword) auth.sshPassword = sshPassword;
+  if (openchamberPassword) auth.openchamberPassword = openchamberPassword;
+
+  const instance: DesktopSshInstance = {
     id,
-    ...(nickname ? { nickname } : {}),
     sshCommand,
-    ...(parsed && parsed.destination ? { sshParsed: parsed } : {}),
     connectionTimeoutSec:
-      readNumber(value, 'connectionTimeoutSec') ??
-      readNumber(value, 'connection_timeout_sec') ??
+      readNumber(raw, 'connectionTimeoutSec') ??
+      readNumber(raw, 'connection_timeout_sec') ??
       60,
-    remoteOpenchamber: {
-      mode,
-      keepRunning: readBoolean(remoteRaw, 'keepRunning') ?? readBoolean(remoteRaw, 'keep_running') ?? true,
-      bindHost: remoteBindHost,
-      ...(preferredPort ? { preferredPort } : {}),
-      installMethod,
-      uploadBundleOverSsh:
-        readBoolean(remoteRaw, 'uploadBundleOverSsh') ??
-        readBoolean(remoteRaw, 'upload_bundle_over_ssh') ??
-        false,
-    },
-    localForward: {
-      ...(preferredLocalPort ? { preferredLocalPort } : {}),
-      bindHost,
-    },
-    auth: {
-      ...(sshPassword ? { sshPassword } : {}),
-      ...(openchamberPassword ? { openchamberPassword } : {}),
-    },
+    remoteOpenchamber,
+    localForward,
+    auth,
     portForwards,
   };
+  if (nickname) instance.nickname = nickname;
+  if (parsed && parsed.destination) instance.sshParsed = parsed;
+  return instance;
 };
 
-const parsePhase = (value: unknown): DesktopSshPhase => {
+const parsePhase = (value: string | null): DesktopSshPhase => {
   switch (value) {
     case 'config_resolved':
     case 'auth_check':
@@ -282,44 +319,43 @@ const parsePhase = (value: unknown): DesktopSshPhase => {
   }
 };
 
-const parseStatus = (value: unknown): DesktopSshInstanceStatus | null => {
-  if (!isRecord(value)) return null;
-  const id = readString(value, 'id');
+const parseStatus = (value: JsonValue): DesktopSshInstanceStatus | null => {
+  const raw = asJsonObject(value);
+  if (!raw) return null;
+  const id = readString(raw, 'id');
   if (!id) return null;
-  return {
+  const status: DesktopSshInstanceStatus = {
     id,
-    phase: parsePhase(readString(value, 'phase')),
-    ...(readString(value, 'detail') ? { detail: readString(value, 'detail') || undefined } : {}),
-    ...(readString(value, 'localUrl') || readString(value, 'local_url')
-      ? { localUrl: readString(value, 'localUrl') || readString(value, 'local_url') || undefined }
-      : {}),
-    ...(typeof (readNumber(value, 'localPort') ?? readNumber(value, 'local_port')) === 'number'
-      ? { localPort: readNumber(value, 'localPort') ?? readNumber(value, 'local_port') ?? undefined }
-      : {}),
-    ...(typeof (readNumber(value, 'remotePort') ?? readNumber(value, 'remote_port')) === 'number'
-      ? {
-          remotePort: readNumber(value, 'remotePort') ?? readNumber(value, 'remote_port') ?? undefined,
-        }
-      : {}),
-    startedByUs: readBoolean(value, 'startedByUs') ?? readBoolean(value, 'started_by_us') ?? false,
-    retryAttempt: readNumber(value, 'retryAttempt') ?? readNumber(value, 'retry_attempt') ?? 0,
+    phase: parsePhase(readString(raw, 'phase')),
+    startedByUs: readBoolean(raw, 'startedByUs') ?? readBoolean(raw, 'started_by_us') ?? false,
+    retryAttempt: readNumber(raw, 'retryAttempt') ?? readNumber(raw, 'retry_attempt') ?? 0,
     requiresUserAction:
-      readBoolean(value, 'requiresUserAction') ?? readBoolean(value, 'requires_user_action') ?? false,
-    updatedAtMs: readNumber(value, 'updatedAtMs') ?? readNumber(value, 'updated_at_ms') ?? Date.now(),
+      readBoolean(raw, 'requiresUserAction') ?? readBoolean(raw, 'requires_user_action') ?? false,
+    updatedAtMs: readNumber(raw, 'updatedAtMs') ?? readNumber(raw, 'updated_at_ms') ?? Date.now(),
   };
+  const detail = readString(raw, 'detail');
+  if (detail) status.detail = detail;
+  const localUrl = readString(raw, 'localUrl') || readString(raw, 'local_url');
+  if (localUrl) status.localUrl = localUrl;
+  const localPort = readNumber(raw, 'localPort') ?? readNumber(raw, 'local_port');
+  if (localPort !== null) status.localPort = localPort;
+  const remotePort = readNumber(raw, 'remotePort') ?? readNumber(raw, 'remote_port');
+  if (remotePort !== null) status.remotePort = remotePort;
+  return status;
 };
 
-const parseImportCandidate = (value: unknown): DesktopSshImportCandidate | null => {
-  if (!isRecord(value)) return null;
-  const host = readString(value, 'host');
-  const source = readString(value, 'source');
-  const sshCommand = readString(value, 'sshCommand') || readString(value, 'ssh_command');
+const parseImportCandidate = (value: JsonValue): DesktopSshImportCandidate | null => {
+  const raw = asJsonObject(value);
+  if (!raw) return null;
+  const host = readString(raw, 'host');
+  const source = readString(raw, 'source');
+  const sshCommand = readString(raw, 'sshCommand') || readString(raw, 'ssh_command');
   if (!host || !source || !sshCommand) return null;
   return {
     host,
     source,
     sshCommand,
-    pattern: readBoolean(value, 'pattern') ?? false,
+    pattern: readBoolean(raw, 'pattern') ?? false,
   };
 };
 
@@ -350,14 +386,15 @@ export const desktopSshInstancesGet = async (): Promise<DesktopSshInstancesConfi
   }
 
   const raw = await invoke('desktop_ssh_instances_get');
-  if (!isRecord(raw)) {
+  const root = asJsonObject(raw);
+  if (!root) {
     return { instances: [] };
   }
 
-  const listRaw = Array.isArray(raw.instances)
-    ? raw.instances
-    : Array.isArray(raw.desktopSshInstances)
-      ? raw.desktopSshInstances
+  const listRaw = Array.isArray(root.instances)
+    ? root.instances
+    : Array.isArray(root.desktopSshInstances)
+      ? root.desktopSshInstances
       : [];
 
   const instances = listRaw
@@ -402,9 +439,9 @@ export const desktopSshDisconnect = async (id: string): Promise<void> => {
 export const desktopSshStatus = async (id?: string): Promise<DesktopSshInstanceStatus[]> => {
   const invoke = getInvoke();
   if (!invoke) return [];
-  const raw = await invoke('desktop_ssh_status', {
-    ...(id ? { id } : {}),
-  });
+  const args: JsonObject = {};
+  if (id) args.id = id;
+  const raw = await invoke('desktop_ssh_status', args);
   if (!Array.isArray(raw)) return [];
   return raw
     .map((item) => parseStatus(item))
@@ -414,12 +451,10 @@ export const desktopSshStatus = async (id?: string): Promise<DesktopSshInstanceS
 export const desktopSshLogs = async (id: string, limit?: number): Promise<string[]> => {
   const invoke = getInvoke();
   if (!invoke) return [];
-  const raw = await invoke('desktop_ssh_logs', {
-    id,
-    ...(typeof limit === 'number' ? { limit } : {}),
-  });
-  if (!Array.isArray(raw)) return [];
-  return raw.filter((line): line is string => typeof line === 'string');
+  const args: JsonObject = { id };
+  if (limit !== undefined) args.limit = limit;
+  const raw = await invoke('desktop_ssh_logs', args);
+  return asStringArray(raw);
 };
 
 export const desktopSshLogsClear = async (id: string): Promise<void> => {
@@ -435,14 +470,16 @@ export const listenDesktopSshStatus = async (
     return async () => {};
   }
 
-  const desktop = (window as unknown as { __OPENCHAMBER_DESKTOP__?: DesktopBridgeGlobal }).__OPENCHAMBER_DESKTOP__;
+  // SAFETY: the preload script installs this global before any renderer code
+  // runs; its shape is the bridge contract declared above.
+  const desktop = (window as Window & { __OPENCHAMBER_DESKTOP__?: DesktopBridgeGlobal }).__OPENCHAMBER_DESKTOP__;
   const listen = desktop?.listen;
-  if (typeof listen !== 'function') {
+  if (!listen) {
     return async () => {};
   }
 
   const unlisten = await listen('openchamber:ssh-instance-status', (event) => {
-    const status = parseStatus(event?.payload);
+    const status = parseStatus(event?.payload ?? null);
     if (!status) return;
     listener(status);
   });

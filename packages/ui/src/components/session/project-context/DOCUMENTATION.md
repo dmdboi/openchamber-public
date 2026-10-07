@@ -83,7 +83,7 @@ before that first message, then reads them from the created session metadata.
 ## Memory is not a fifth kind of note
 
 The first four tabs hold what the user wrote. Memory holds what the **agent**
-wrote for itself, in its own store (`packages/web/server/lib/agent-memory`) and
+wrote for itself, in its own store (`packages/api/server/lib/agent-memory`) and
 through its own client (`useAgentMemoryStore`). They share the panel and nothing
 else — keeping the stores apart is what stops an agent mistake from landing in
 the user's notes.
@@ -115,7 +115,7 @@ cannot silently clear another's badges.
 The store is loaded by `useAgentMemorySync` in `App.tsx` and reloads on
 `openchamber:agent-memory-changed`, because the agent writes mid-turn through
 its own tool. It feeds this panel only — what a session is told about memory is
-decided server-side by `packages/web/server/lib/session-knowledge`, so it
+decided server-side by `packages/api/server/lib/session-knowledge`, so it
 reaches sessions that have no UI at all and survives compaction.
 
 `useProjectContextOwner` is the client authority shared by this panel and the
@@ -144,7 +144,7 @@ selection falls back to `notes` rather than opening a tab that no longer exists.
 ## Data flow
 
 Storage is server-owned; see
-`packages/web/server/lib/project-context/DOCUMENTATION.md`. The panel never
+`packages/api/server/lib/project-context/DOCUMENTATION.md`. The panel never
 touches `/api/fs/*` and never handles a plan path — plans are addressed by id.
 
 ```
@@ -229,7 +229,7 @@ matched the old project would silently hide everything in the new one.
 ## Pinned context
 
 The pin toggle on a note or plan attaches it to the current session or draft.
-Assembly and delivery live in `packages/web/server/lib/session-knowledge`.
+Assembly and delivery live in `packages/api/server/lib/session-knowledge`.
 
 ## Related
 

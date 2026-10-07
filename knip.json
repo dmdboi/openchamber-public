@@ -20,12 +20,13 @@
     "packages/ui": {
       "entry": [
         "src/apps/renderVSCodeApp.tsx",
-        "src/**/*.bench.{ts,tsx}",
-        "src/**/*.{test,spec}.{js,cjs,mjs,jsx,ts,tsx}",
-        "src/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}"
+        "tests/**/*.bench.{ts,tsx}",
+        "tests/**/*.{test,spec}.{js,cjs,mjs,jsx,ts,tsx}",
+        "tests/**/__tests__/**/*.{js,cjs,mjs,jsx,ts,tsx}"
       ],
       "project": [
-        "src/**/*.{ts,tsx}"
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
       ]
     },
     "packages/web": {
@@ -34,14 +35,31 @@
         "src/mini-chat-main.tsx",
         "src/main.tsx",
         "src/sw.ts",
-        "bin/**/*.{test,spec}.{js,cjs,mjs}",
-        "server/**/*.{test,spec}.{js,cjs,mjs}",
-        "src/**/*.{test,spec}.{ts,tsx}"
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{js,mjs,cjs,ts,tsx}"
+      ]
+    },
+    "packages/api": {
+      "entry": [
+        "scripts/**/*.mjs",
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts}"
+      ],
+      "project": [
+        "scripts/**/*.mjs",
+        "server/**/*.{js,mjs,cjs}",
+        "tests/**/*.{js,mjs,cjs,ts}"
+      ]
+    },
+    "packages/cli": {
+      "entry": [
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts}"
       ],
       "project": [
         "bin/**/*.js",
-        "server/**/*.{js,mjs,cjs}",
-        "src/**/*.{ts,tsx}"
+        "tests/**/*.{js,mjs,cjs,ts}"
       ]
     },
     "packages/electron": {
@@ -52,23 +70,24 @@
         "tray.mjs",
         "ssh-manager.mjs",
         "opencode-cwd.mjs",
-        "*.{test,spec}.{js,cjs,mjs}",
+        "tests/**/*.{test,spec}.{js,cjs,mjs}",
         "scripts/**/*.{js,cjs,mjs}"
       ],
       "project": [
         "*.{js,cjs,mjs}",
-        "scripts/**/*.{js,cjs,mjs}"
+        "scripts/**/*.{js,cjs,mjs}",
+        "tests/**/*.{js,cjs,mjs}"
       ]
     },
     "packages/vscode": {
       "entry": [
         "webview/main.tsx",
-        "src/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}",
-        "webview/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
+        "tests/**/*.{test,spec}.{js,cjs,mjs,ts,tsx}"
       ],
       "project": [
         "src/**/*.{ts,tsx}",
-        "webview/**/*.{ts,tsx}"
+        "webview/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
       ]
     },
     "packages/sdk": {
@@ -76,12 +95,13 @@
         "src/index.ts",
         "src/ui/index.ts",
         "src/schemas.ts",
-        "src/**/*.{test,spec}.ts",
-        "scripts/**/*.{test,spec}.ts"
+        "tests/**/*.{test,spec}.{js,ts}",
+        "scripts/fixtures/guest-entry.ts"
       ],
       "project": [
         "src/**/*.ts",
-        "scripts/**/*.ts"
+        "scripts/**/*.ts",
+        "tests/**/*.{js,ts}"
       ]
     },
     "packages/mobile": {

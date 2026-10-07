@@ -41,7 +41,7 @@ after cleanup, and label JS heap separately from process RSS.
 
 ```bash
 bun run build:ui && bun run build:web
-cd <a project directory> && node <repo>/packages/web/bin/cli.js serve --port 4599 --foreground
+cd <a project directory> && node <repo>/packages/cli/bin/cli.js serve --port 4599 --foreground
 ```
 
 `profile:idle` and `profile:session` need a running server; `profile:animation`
@@ -122,7 +122,7 @@ rate the model name asks for. OpenCode still produces its real event stream.
 ```bash
 node scripts/perf/fixture-provider.mjs 4601 &
 OPENCODE_CONFIG_CONTENT="$(node scripts/perf/fixture-provider.mjs 4601 --print-config)" \
-  node <repo>/packages/web/bin/cli.js serve --port 4599 --foreground
+  node <repo>/packages/cli/bin/cli.js serve --port 4599 --foreground
 bun run profile:session -- --url http://127.0.0.1:4599 --dir <project directory> --model perf/stream-300cps
 ```
 

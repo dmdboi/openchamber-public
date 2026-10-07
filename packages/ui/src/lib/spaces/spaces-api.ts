@@ -1,7 +1,7 @@
 // The host's routes of the isolated-spaces journey, `/api/openchamber/spaces`, as the screens call
 // them. Every answer is parsed here, once, into the types the screens use; a failure is a thrown
 // `SpacesRequestError` with the server's stable code, never an empty answer that would read as
-// "no spaces". The contract is `packages/web/server/lib/spaces/DOCUMENTATION.md`, "The journey".
+// "no spaces". The contract is `packages/api/server/lib/spaces/DOCUMENTATION.md`, "The journey".
 
 import { z } from 'zod';
 

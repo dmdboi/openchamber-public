@@ -64,7 +64,7 @@ import type {
 } from '@openchamber/ui/lib/api/types';
 import { runtimeFetch } from '@openchamber/ui/lib/runtime-fetch';
 import type { RuntimeFetchOptions } from '@openchamber/ui/lib/runtime-fetch';
-import { isSafeRepositoryEndpoint, parseBindingResponse, resolveBindingReadiness } from '../../server/lib/source-control/binding-contract.js';
+import { isSafeRepositoryEndpoint, parseBindingResponse, resolveBindingReadiness } from '../../../api/server/lib/source-control/binding-contract.js';
 import { fetchGitHubReferenceDetail, fetchGitHubReferences } from './github-references';
 
 interface ErrorResponse {

@@ -15,7 +15,7 @@ import {
   type JSONPath,
   type ParseError,
 } from 'jsonc-parser';
-import { resolveNpmRegistryRequest } from '../../web/server/lib/opencode/npm-registry-config.js';
+import { resolveNpmRegistryRequest } from '../../api/server/lib/opencode/npm-registry-config.js';
 import {
   toAgentEntity,
   fromAgentEntity,
@@ -92,6 +92,12 @@ export type CommandScope = typeof COMMAND_SCOPE[keyof typeof COMMAND_SCOPE];
 
 export type SnippetScope = 'global' | 'project';
 
+/** Where an agent/command resolved and which scope it lives in. */
+type AgentScopeLookup = { scope: AgentScope | null; path: string | null };
+type AgentWriteTarget = { scope: AgentScope; path: string };
+type CommandScopeLookup = { scope: CommandScope | null; path: string | null };
+type CommandWriteTarget = { scope: CommandScope; path: string };
+
 export type Snippet = {
   name: string;
   content: string;
@@ -107,7 +113,7 @@ type PluginParsedKind = 'npm' | 'path';
 export type PluginEntry = {
   id: string;
   spec: string;
-  options?: Record<string, unknown>;
+  options?: JsonObject;
   scope: PluginScope;
   kind: 'config';
   parsedKind: PluginParsedKind;
@@ -265,7 +271,7 @@ const getAgentScope = (
   agentName: string,
   workingDirectory?: string,
   lookupCache: AgentLookupCache = globalAgentLookupCache
-): { scope: AgentScope | null; path: string | null } => {
+): AgentScopeLookup => {
   if (workingDirectory) {
     const projectPath = getProjectAgentPath(workingDirectory, agentName);
     if (fs.existsSync(projectPath)) {
@@ -286,7 +292,7 @@ const getAgentWritePath = (
   workingDirectory?: string,
   requestedScope?: AgentScope,
   lookupCache: AgentLookupCache = globalAgentLookupCache
-): { scope: AgentScope; path: string } => {
+): AgentWriteTarget => {
   const existing = getAgentScope(agentName, workingDirectory, lookupCache);
   if (existing.path) {
     return { scope: existing.scope!, path: existing.path };
@@ -338,7 +344,7 @@ const getUserCommandPath = (commandName: string): string => {
   return preferred;
 };
 
-const getCommandScope = (commandName: string, workingDirectory?: string): { scope: CommandScope | null; path: string | null } => {
+const getCommandScope = (commandName: string, workingDirectory?: string): CommandScopeLookup => {
   if (workingDirectory) {
     const projectPath = getProjectCommandPath(workingDirectory, commandName);
     if (fs.existsSync(projectPath)) {
@@ -354,7 +360,7 @@ const getCommandScope = (commandName: string, workingDirectory?: string): { scop
   return { scope: null, path: null };
 };
 
-const getCommandWritePath = (commandName: string, workingDirectory?: string, requestedScope?: CommandScope): { scope: CommandScope; path: string } => {
+const getCommandWritePath = (commandName: string, workingDirectory?: string, requestedScope?: CommandScope): CommandWriteTarget => {
   const existing = getCommandScope(commandName, workingDirectory);
   if (existing.path) {
     return { scope: existing.scope!, path: existing.path };
@@ -395,7 +401,7 @@ const assertValidSnippetName = (name: string): void => {
   }
 };
 
-const normalizeSnippetAliases = (frontmatter: Record<string, unknown>): string[] => {
+const normalizeSnippetAliases = (frontmatter: JsonObject): string[] => {
   const raw = frontmatter.aliases ?? frontmatter.alias;
   if (!raw) return [];
   const aliases = Array.isArray(raw) ? raw : [raw];
@@ -475,11 +481,14 @@ const findSnippetByName = (name: string, workingDirectory?: string): Snippet | n
   return loadSnippetRegistry(workingDirectory).get(name.toLowerCase()) ?? null;
 };
 
-const writeSnippetFile = (filePath: string, config: Record<string, unknown>): void => {
+/** The snippet fields a write cares about; extra keys from the request are ignored. */
+type SnippetWriteInput = { aliases?: unknown; description?: unknown; content?: unknown };
+
+const writeSnippetFile = (filePath: string, config: SnippetWriteInput): void => {
   const aliases = Array.isArray(config.aliases)
     ? config.aliases.map((alias) => String(alias).trim()).filter(Boolean)
     : [];
-  const frontmatter: Record<string, unknown> = {};
+  const frontmatter: JsonObject = {};
   if (aliases.length > 0) frontmatter.aliases = aliases;
   if (typeof config.description === 'string' && config.description.trim()) {
     frontmatter.description = config.description.trim();
@@ -488,7 +497,9 @@ const writeSnippetFile = (filePath: string, config: Record<string, unknown>): vo
   writeMdFile(filePath, frontmatter, typeof config.content === 'string' ? config.content : '');
 };
 
-const parseSnippetBlocks = (content: string): { inline: string; prepend: string[]; append: string[] } => {
+type SnippetBlocks = { inline: string; prepend: string[]; append: string[] };
+
+const parseSnippetBlocks = (content: string): SnippetBlocks => {
   const blocks = { prepend: [] as string[], append: [] as string[] };
   let inline = content;
   for (const type of ['prepend', 'append'] as const) {
@@ -542,7 +553,7 @@ const expandSnippetText = (
   return expanded;
 };
 
-const isPromptFileReference = (value: unknown): value is string => {
+const isPromptFileReference = (value: JsonValue): value is string => {
   return typeof value === 'string' && PROMPT_FILE_PATTERN.test(value.trim());
 };
 
@@ -632,17 +643,14 @@ const formatJsoncParseError = (filePath: string, errors: ParseError[]): string =
   return `OpenCode configuration at ${filePath} contains invalid JSONC and cannot be loaded safely${location}`;
 };
 
-const isInvalidJsoncError = (error: unknown): error is Error & { code: string } =>
-  Boolean(error && typeof error === 'object' && 'code' in error && error.code === INVALID_JSONC);
-
 // Comment-only / whitespace-only files parse to undefined with nothing but
 // ValueExpected. Any other error means real content we failed to understand
 // (YAML, plain text, a stray leading token), which must not read as empty.
-const isCommentOnlyParse = (parsed: unknown, errors: ParseError[]): boolean =>
+const isCommentOnlyParse = (parsed: JsonValue | undefined, errors: ParseError[]): boolean =>
   parsed === undefined
   && errors.every((entry) => printParseErrorCode(entry.error) === 'ValueExpected');
 
-type ConfigParseResult = { config: Record<string, unknown>; value: JsonValue; commentOnly: boolean };
+type ConfigParseResult = { config: JsonObject; value: JsonValue; commentOnly: boolean };
 
 const parseConfigResult = (content: string, filePath: string): ConfigParseResult => {
   const errors: ParseError[] = [];
@@ -656,10 +664,10 @@ const parseConfigResult = (content: string, filePath: string): ConfigParseResult
   return { config: parsed, value: parsed, commentOnly: false };
 };
 
-const parseConfigObject = (content: string, filePath: string): Record<string, unknown> =>
+const parseConfigObject = (content: string, filePath: string): JsonObject =>
   parseConfigResult(content, filePath).config;
 
-const readConfigFile = (filePath?: string | null): Record<string, unknown> => {
+const readConfigFile = (filePath?: string | null): JsonObject => {
   if (!filePath || !fs.existsSync(filePath)) return {};
   const content = fs.readFileSync(filePath, 'utf8');
   const normalized = content.trim();
@@ -669,11 +677,16 @@ const readConfigFile = (filePath?: string | null): Record<string, unknown> => {
   return parseConfigObject(normalized, filePath);
 };
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+// The value is already decoded from JSONC/YAML at the I/O boundary; this only
+// confirms it is a JSON object rather than an array or scalar.
+const isPlainObject = (value: unknown): value is JsonObject =>
   Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 
-const mergeConfigs = (base: Record<string, unknown>, override: Record<string, unknown>): Record<string, unknown> => {
-  const result: Record<string, unknown> = { ...base };
+// JSON string field read at the config/frontmatter boundary.
+const isJsonString = (value: JsonValue | undefined): value is string => typeof value === 'string';
+
+const mergeConfigs = (base: JsonObject, override: JsonObject): JsonObject => {
+  const result: JsonObject = { ...base };
   for (const [key, value] of Object.entries(override)) {
     if (key in result) {
       const baseValue = result[key];
@@ -689,16 +702,19 @@ const mergeConfigs = (base: Record<string, unknown>, override: Record<string, un
   return result;
 };
 
-const readConfigLayer = (filePath?: string | null): {
-  config: Record<string, unknown>;
+type ConfigLayerRead = {
+  config: JsonObject;
   error: (Error & { code: string }) | null;
-} => {
+};
+
+const readConfigLayer = (filePath?: string | null): ConfigLayerRead => {
   try {
     return { config: readConfigFile(filePath), error: null };
   } catch (error) {
-    if (isInvalidJsoncError(error)) {
-      console.error(error.message);
-      return { config: {}, error };
+    if (error instanceof Error && 'code' in error && error.code === INVALID_JSONC) {
+      const invalidJsonc = codedError(error.message, INVALID_JSONC);
+      console.error(invalidJsonc.message);
+      return { config: {}, error: invalidJsonc };
     }
     throw error;
   }
@@ -743,7 +759,7 @@ const readConfigLayers = (workingDirectory?: string) => {
   };
 };
 
-export const readConfig = (workingDirectory?: string): Record<string, unknown> =>
+export const readConfig = (workingDirectory?: string): JsonObject =>
   readConfigLayers(workingDirectory).mergedConfig;
 
 const getAncestors = (startDir?: string, stopDir?: string): string[] => {
@@ -1015,7 +1031,7 @@ const buildConfigFileContent = (
   return JSON.stringify(desired, null, 2);
 };
 
-const writeConfig = (config: Record<string, unknown>, filePath: string = CONFIG_FILE) => {
+const writeConfig = (config: JsonObject, filePath: string = CONFIG_FILE) => {
   let existingRaw = '';
   let existingParse: ConfigParseResult | null = null;
   if (fs.existsSync(filePath)) {
@@ -1044,12 +1060,12 @@ const codedError = (message: string, code: string): Error & { code: string } => 
   return error;
 };
 
-const validatePluginScope = (scope: unknown): PluginScope => {
+const validatePluginScope = (scope: JsonValue): PluginScope => {
   if (scope === 'user' || scope === 'project') return scope;
   throw codedError('Plugin scope must be user or project', 'INVALID_SCOPE');
 };
 
-const validatePluginSpec = (spec: unknown): string => {
+const validatePluginSpec = (spec: JsonValue | undefined): string => {
   if (typeof spec !== 'string' || spec.trim().length === 0) {
     throw codedError('Plugin spec must be a non-empty string', 'INVALID_SPEC');
   }
@@ -1061,7 +1077,7 @@ const validatePluginSpec = (spec: unknown): string => {
 
 const PLUGIN_FILE_NAME_PATTERN = /^[a-z0-9][a-z0-9-_.]*\.(js|ts|mjs|cjs)$/;
 
-const validatePluginFileName = (fileName: unknown): string => {
+const validatePluginFileName = (fileName: JsonValue): string => {
   if (typeof fileName !== 'string' || fileName.trim().length === 0) {
     throw codedError('Plugin file name is required', 'INVALID_FILENAME');
   }
@@ -1080,7 +1096,9 @@ const validatePluginFileName = (fileName: unknown): string => {
 const encodePluginId = (prefix: 'config' | 'file', value: string): string =>
   Buffer.from(`${prefix}:${value}`, 'utf8').toString('base64url');
 
-const decodePluginId = (id: string): { prefix: string; value: string } => {
+type DecodedPluginId = { prefix: string; value: string };
+
+const decodePluginId = (id: string): DecodedPluginId => {
   try {
     const decoded = Buffer.from(id, 'base64url').toString('utf8');
     const separator = decoded.indexOf(':');
@@ -1091,7 +1109,9 @@ const decodePluginId = (id: string): { prefix: string; value: string } => {
   }
 };
 
-const parsePluginIdValue = (value: string): { scope: PluginScope; rest: string } => {
+type PluginIdValue = { scope: PluginScope; rest: string };
+
+const parsePluginIdValue = (value: string): PluginIdValue => {
   const separator = value.indexOf(':');
   if (separator <= 0) {
     throw codedError('Plugin id value must include scope', 'INVALID_SPEC');
@@ -1102,21 +1122,27 @@ const parsePluginIdValue = (value: string): { scope: PluginScope; rest: string }
   };
 };
 
+type ParsedPluginEntry = { spec: string; options?: JsonObject };
+
 /** Accepts a v1 string/tuple or a v2 `{package, options}` object. */
-const parsePluginRaw = (raw: unknown): { spec: string; options?: Record<string, unknown> } => {
+const parsePluginRaw = (raw: JsonValue): ParsedPluginEntry => {
   const entity = toPluginEntity(raw);
   if (!entity) {
     throw codedError('Plugin spec must be a string, [string, object], or {package, options}', 'INVALID_SPEC');
   }
-  const parsed: { spec: string; options?: Record<string, unknown> } = {
+  const parsed: ParsedPluginEntry = {
     spec: validatePluginSpec(entity.package),
   };
-  if (entity.options && Object.keys(entity.options).length > 0) parsed.options = { ...entity.options };
+  if (entity.options && Object.keys(entity.options).length > 0) {
+    // `toPluginEntity` returns the shared JS options map; normalize the JSON it
+    // carries to the config JSON shape.
+    parsed.options = JSON.parse(JSON.stringify(entity.options));
+  }
   return parsed;
 };
 
 /** Always v2: a bare string, or `{package, options}`. Never a tuple. */
-const serializePluginEntry = (entry: { spec?: unknown; options?: unknown }): string | { package: string; options?: Record<string, unknown> } => {
+const serializePluginEntry = (entry: { spec?: JsonValue; options?: JsonValue }): string | JsonObject => {
   const spec = validatePluginSpec(entry.spec);
   const serialized = fromPluginEntity({
     package: spec,
@@ -1125,13 +1151,18 @@ const serializePluginEntry = (entry: { spec?: unknown; options?: unknown }): str
   if (serialized === null) {
     throw codedError('Plugin spec must be a non-empty string', 'INVALID_SPEC');
   }
-  return serialized;
+  // `fromPluginEntity` returns the shared JS options map; normalize the JSON it
+  // carries to the config JSON shape.
+  const normalized: JsonValue = JSON.parse(JSON.stringify(serialized));
+  return typeof normalized === 'string' || isPlainObject(normalized) ? normalized : spec;
 };
 
 const isPluginPathSpec = (spec: string): boolean =>
   spec.startsWith('/') || spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('~') || path.win32.isAbsolute(spec);
 
-const parsePluginPathSpec = (spec: string, workingDirectory?: string | null): { absolutePath: string } => {
+type PluginPathResolution = { absolutePath: string };
+
+const parsePluginPathSpec = (spec: string, workingDirectory?: string | null): PluginPathResolution => {
   if (spec === '~') return { absolutePath: path.resolve(os.homedir()) };
   if (spec.startsWith('~/')) return { absolutePath: path.resolve(os.homedir(), spec.slice(2)) };
   if (spec.startsWith('./') || spec.startsWith('../')) {
@@ -1195,7 +1226,9 @@ const ensureProjectPluginConfigPath = (workingDirectory?: string | null): string
   return path.join(workingDirectory, '.opencode', 'opencode.json');
 };
 
-const getPluginConfigSources = (workingDirectory?: string | null): Array<{ scope: PluginScope; path: string; config: Record<string, unknown> }> => {
+type PluginConfigSource = { scope: PluginScope; path: string; config: JsonObject };
+
+const getPluginConfigSources = (workingDirectory?: string | null): PluginConfigSource[] => {
   const customPath = getActiveCustomConfigPath();
   const userPath = getActivePrimaryUserConfigPath();
   const projectPath = getProjectConfigPath(workingDirectory || undefined);
@@ -1213,7 +1246,7 @@ const getPluginConfigSources = (workingDirectory?: string | null): Array<{ scope
  * Every plugin a layer declares, in the order OpenCode concatenates them: the
  * v1 `plugin` array first, then the v2 `plugins` array.
  */
-const readPluginArray = (config: Record<string, unknown>): unknown[] => [
+const readPluginArray = (config: JsonObject): JsonValue[] => [
   ...(Array.isArray(config.plugin) ? config.plugin : []),
   ...(Array.isArray(config.plugins) ? config.plugins : []),
 ];
@@ -1222,8 +1255,8 @@ const readPluginArray = (config: Record<string, unknown>): unknown[] => [
  * Writes the whole list back as v2 `plugins`, dropping the legacy `plugin`
  * array. Read order above means entries keep their positions.
  */
-const writePluginArray = (config: Record<string, unknown>, plugin: unknown[]): Record<string, unknown> => {
-  const next = { ...config };
+const writePluginArray = (config: JsonObject, plugin: JsonValue[]): JsonObject => {
+  const next: JsonObject = { ...config };
   delete next.plugin;
   if (plugin.length > 0) {
     // An entry we cannot parse is carried over untouched rather than dropped:
@@ -1242,7 +1275,7 @@ const writePluginArray = (config: Record<string, unknown>, plugin: unknown[]): R
   return next;
 };
 
-const hasPluginSpec = (plugin: unknown[], spec: string): boolean => plugin.some((raw) => {
+const hasPluginSpec = (plugin: JsonValue[], spec: string): boolean => plugin.some((raw) => {
   try {
     return parsePluginRaw(raw).spec === spec;
   } catch {
@@ -1250,14 +1283,16 @@ const hasPluginSpec = (plugin: unknown[], spec: string): boolean => plugin.some(
   }
 });
 
-const getPluginTarget = (id: string, workingDirectory?: string | null): null | {
+type PluginTarget = {
   scope: PluginScope;
   path: string;
-  config: Record<string, unknown>;
-  plugin: unknown[];
+  config: JsonObject;
+  plugin: JsonValue[];
   index: number;
   spec: string;
-} => {
+};
+
+const getPluginTarget = (id: string, workingDirectory?: string | null): null | PluginTarget => {
   const decoded = decodePluginId(id);
   if (decoded.prefix !== 'config') {
     throw codedError('Plugin entry id must use config prefix', 'INVALID_SPEC');
@@ -1288,7 +1323,11 @@ export const listPluginEntries = (workingDirectory?: string): PluginEntry[] => {
         kind: 'config',
         parsedKind: isPluginPathSpec(item.entry.package) ? 'path' : 'npm',
       };
-      if (item.entry.options) entry.options = item.entry.options;
+      if (item.entry.options) {
+        // `readPluginList` returns the shared JS options map; normalize the JSON
+        // it carries to the config JSON shape.
+        entry.options = JSON.parse(JSON.stringify(item.entry.options));
+      }
       entries.push(entry);
     }
   }
@@ -1299,8 +1338,10 @@ export const getPluginEntry = (id: string, workingDirectory?: string): PluginEnt
   listPluginEntries(workingDirectory).find((entry) => entry.id === id) || null;
 
 export const createPluginEntry = (entry: { spec?: unknown; options?: unknown; scope?: unknown }, workingDirectory?: string): void => {
-  const spec = validatePluginSpec(entry.spec);
-  const scope = validatePluginScope(entry.scope || 'user');
+  // Bridge payloads are JSON; normalize once so the entry fields are JSON-typed.
+  const parsedEntry: JsonObject = JSON.parse(JSON.stringify(entry));
+  const spec = validatePluginSpec(parsedEntry.spec);
+  const scope = validatePluginScope(parsedEntry.scope || 'user');
   const sources = getPluginConfigSources(workingDirectory);
   if (sources.some((source) => source.scope === scope && hasPluginSpec(readPluginArray(source.config), spec))) {
     throw codedError(`Plugin "${spec}" already exists`, 'ENTRY_EXISTS');
@@ -1311,15 +1352,17 @@ export const createPluginEntry = (entry: { spec?: unknown; options?: unknown; sc
     : userSource?.path ?? getActivePrimaryUserConfigPath();
   const config = fs.existsSync(targetPath) ? readConfigFile(targetPath) : {};
   const plugin = readPluginArray(config);
-  writeConfig(writePluginArray(config, [...plugin, serializePluginEntry({ spec, options: entry.options })]), targetPath);
+  writeConfig(writePluginArray(config, [...plugin, serializePluginEntry({ spec, options: parsedEntry.options })]), targetPath);
 };
 
 export const updatePluginEntry = (id: string, updates: { spec?: unknown; options?: unknown }, workingDirectory?: string): void => {
+  // Bridge payloads are JSON; normalize once so the update fields are JSON-typed.
+  const parsedUpdates: JsonObject = JSON.parse(JSON.stringify(updates));
   const target = getPluginTarget(id, workingDirectory);
   if (!target) throw codedError('Plugin entry not found', 'NOT_FOUND');
   const existing = parsePluginRaw(target.plugin[target.index]);
-  const nextSpec = updates.spec === undefined ? existing.spec : validatePluginSpec(updates.spec);
-  const nextOptions = updates.options === undefined ? existing.options : updates.options;
+  const nextSpec = parsedUpdates.spec === undefined ? existing.spec : validatePluginSpec(parsedUpdates.spec);
+  const nextOptions = parsedUpdates.options === undefined ? existing.options : parsedUpdates.options;
   target.plugin[target.index] = serializePluginEntry({ spec: nextSpec, options: nextOptions });
   writeConfig(writePluginArray(target.config, target.plugin), target.path);
 };
@@ -1339,7 +1382,9 @@ const getPluginDir = (scope: PluginScope, workingDirectory?: string | null): str
   return path.join(getActiveOpencodeConfigDir(), 'plugins');
 };
 
-const getPluginFileTarget = (id: string, workingDirectory?: string): { scope: PluginScope; fileName: string; filePath: string } => {
+type PluginFileTarget = { scope: PluginScope; fileName: string; filePath: string };
+
+const getPluginFileTarget = (id: string, workingDirectory?: string): PluginFileTarget => {
   const decoded = decodePluginId(id);
   if (decoded.prefix !== 'file') {
     throw codedError('Plugin file id must use file prefix', 'INVALID_FILENAME');
@@ -1392,14 +1437,16 @@ export const writePluginDirFile = (
   workingDirectory?: string,
   opts: { overwrite?: boolean } = {},
 ): void => {
-  const scope = validatePluginScope(file.scope || 'user');
-  const fileName = validatePluginFileName(file.fileName);
+  // Bridge payloads are JSON; normalize once so the file fields are JSON-typed.
+  const parsedFile: JsonObject = JSON.parse(JSON.stringify(file));
+  const scope = validatePluginScope(parsedFile.scope || 'user');
+  const fileName = validatePluginFileName(parsedFile.fileName);
   const filePath = path.join(getPluginDir(scope, workingDirectory), fileName);
   if (!opts.overwrite && fs.existsSync(filePath)) {
     throw codedError(`Plugin file "${fileName}" already exists`, 'FILE_EXISTS');
   }
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
-  fs.writeFileSync(filePath, typeof file.content === 'string' ? file.content : '', 'utf8');
+  fs.writeFileSync(filePath, typeof parsedFile.content === 'string' ? parsedFile.content : '', 'utf8');
 };
 
 export const deletePluginDirFile = (id: string, workingDirectory?: string): void => {
@@ -1630,7 +1677,7 @@ export const createMcpConfig = (
   }
 
   let targetPath = CONFIG_FILE;
-  let config: Record<string, unknown> = {};
+  let config: JsonObject = {};
 
   if (scope === AGENT_SCOPE.PROJECT) {
     if (!workingDirectory) {
@@ -1641,7 +1688,7 @@ export const createMcpConfig = (
   } else {
     const jsonTarget = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
     targetPath = jsonTarget.path || CONFIG_FILE;
-    config = (jsonTarget.config || {}) as Record<string, unknown>;
+    config = jsonTarget.config || {};
   }
 
   const { name: _ignoredName, scope: _ignoredScope, ...entryData } = mcpConfig;
@@ -1663,7 +1710,7 @@ export const updateMcpConfig = (name: string, updates: Record<string, unknown>, 
     throw new Error(`MCP server "${name}" not found`);
   }
   const targetPath = source.path || CONFIG_FILE;
-  const config = (source.config || readConfigFile(targetPath)) as Record<string, unknown>;
+  const config = source.config || readConfigFile(targetPath);
 
   const existing = toMcpEntity(source.section);
   const { name: _ignoredName, scope: _ignoredScope, ...updateData } = updates;
@@ -1678,7 +1725,7 @@ export const deleteMcpConfig = (name: string, workingDirectory?: string) => {
   const layers = readConfigLayers(workingDirectory);
   const source = getJsonEntrySource(layers, 'mcp', name);
   const targetPath = source.path || CONFIG_FILE;
-  const config = (source.config || readConfigFile(targetPath)) as Record<string, unknown>;
+  const config = source.config || readConfigFile(targetPath);
 
   if (!deleteMcpEntry(config, name)) {
     throw new Error(`MCP server "${name}" not found`);
@@ -1707,7 +1754,7 @@ const throwIfLayerError = (
 
 type EntitySectionKind = SectionKind | 'mcp';
 
-const lookupSectionEntry = (config: unknown, sectionKind: EntitySectionKind, entryName: string) =>
+const lookupSectionEntry = (config: JsonObject, sectionKind: EntitySectionKind, entryName: string) =>
   sectionKind === 'mcp' ? readMcpEntry(config, entryName) : readSectionEntry(config, sectionKind, entryName);
 
 /**
@@ -1721,12 +1768,12 @@ const getJsonEntrySource = (
   entryName: string
 ) => {
   const { userConfig, projectConfig, customConfig, paths } = layers;
-  const found = (config: unknown, filePath: string) => {
+  const found = (config: JsonObject, filePath: string) => {
     const entry = lookupSectionEntry(config, sectionKind, entryName);
     if (entry.value === undefined) return null;
     return {
       section: entry.value,
-      config: config as Record<string, unknown>,
+      config,
       path: filePath,
       exists: true,
       sectionKey: entry.key,
@@ -1769,12 +1816,14 @@ const getJsonWriteTarget = (
   return { config: userConfig, path: paths.userPath };
 };
 
+type ConfigWriteResult = { changed: boolean };
+
 /**
  * Mirror of the web server's `setWebSearchSelection`
- * (`packages/web/server/lib/opencode/websearch-config.js`): the `websearch`
+ * (`packages/api/server/lib/opencode/websearch-config.js`): the `websearch`
  * choice goes to `OPENCODE_CONFIG` when set, else the user's global config.
  */
-export const setWebSearchSelection = (selection: WebSearchSelection): { changed: boolean } => {
+export const setWebSearchSelection = (selection: WebSearchSelection): ConfigWriteResult => {
   const layers = readConfigLayers();
   const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
   const changed = writeWebSearchSelection(target.config, selection);
@@ -1783,7 +1832,7 @@ export const setWebSearchSelection = (selection: WebSearchSelection): { changed:
 };
 
 /** Mirror of the web server's `setWarmingEnabled`: same target file as the web search choice. */
-export const setWarmingEnabled = (enabled: boolean): { changed: boolean } => {
+export const setWarmingEnabled = (enabled: boolean): ConfigWriteResult => {
   const layers = readConfigLayers();
   const target = getJsonWriteTarget(layers, AGENT_SCOPE.USER);
   const changed = writeWarmingEnabled(target.config, enabled);
@@ -1804,10 +1853,10 @@ const PROJECT_CONFIG_NAMES = [
 ];
 
 /** Mirror of the web server's `readProjectConfigFiles`: existing project configs, deepest first; unreadable ones skipped. */
-const readProjectConfigFiles = (workingDirectory?: string): Array<{ path: string; config: Record<string, unknown> }> => {
+const readProjectConfigFiles = (workingDirectory?: string): Array<{ path: string; config: JsonObject }> => {
   if (!workingDirectory) return [];
   const root = findWorktreeRoot(workingDirectory) || path.resolve(workingDirectory);
-  const files: Array<{ path: string; config: Record<string, unknown> }> = [];
+  const files: Array<{ path: string; config: JsonObject }> = [];
   for (const base of getAncestors(workingDirectory, root)) {
     for (const name of PROJECT_CONFIG_NAMES) {
       const filePath = path.join(base, name);
@@ -1822,18 +1871,20 @@ const readProjectConfigFiles = (workingDirectory?: string): Array<{ path: string
   return files;
 };
 
-/**
- * The permission rules that apply to an agent, in evaluation order (global
- * rules first, agent rules last; last match wins). Answers the editor question
- * "what applies to this agent".
- */
-export const getAgentPermissions = (agentName: string, workingDirectory?: string): {
+type AgentPermissionsResult = {
   global: PermissionRule[];
   agent: PermissionRule[];
   effective: EffectivePermissionRule[];
   source: 'md' | 'json' | 'none';
   path: string | null;
-} => {
+};
+
+/**
+ * The permission rules that apply to an agent, in evaluation order (global
+ * rules first, agent rules last; last match wins). Answers the editor question
+ * "what applies to this agent".
+ */
+export const getAgentPermissions = (agentName: string, workingDirectory?: string): AgentPermissionsResult => {
   const layers = readConfigLayers(workingDirectory);
   const globalRules = [
     ...readGlobalPermissionRules(layers.userConfig),
@@ -1851,15 +1902,20 @@ export const getAgentPermissions = (agentName: string, workingDirectory?: string
   };
 };
 
-const parseMdFile = (filePath: string): { frontmatter: Record<string, unknown>; body: string } => {
+type ParsedMdFile = { frontmatter: JsonObject; body: string };
+
+const parseMdFile = (filePath: string): ParsedMdFile => {
   const content = fs.readFileSync(filePath, 'utf8');
   // The closing fence may end the file: an agent with no system prompt has
   // nothing after it.
   const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n([\s\S]*))?$/);
   if (!match) return { frontmatter: {}, body: content.trim() };
-  let frontmatter: Record<string, unknown> = {};
+  let frontmatter: JsonObject = {};
   try {
-    frontmatter = (yaml.parse(match[1]) || {}) as Record<string, unknown>;
+    // YAML frontmatter is a JSON-shaped map; a scalar or array document is not
+    // frontmatter and reads as empty, matching the previous coercion.
+    const parsedYaml: JsonValue | undefined = yaml.parse(match[1]);
+    frontmatter = isPlainObject(parsedYaml) ? parsedYaml : {};
   } catch (error) {
     console.warn(`[OpenChamber][VSCode] Failed to parse frontmatter for ${filePath}, treating as empty:`, error);
     frontmatter = {};
@@ -1867,7 +1923,7 @@ const parseMdFile = (filePath: string): { frontmatter: Record<string, unknown>; 
   return { frontmatter, body: (match[2] || '').trim() };
 };
 
-const writeMdFile = (filePath: string, frontmatter: Record<string, unknown>, body: string) => {
+const writeMdFile = (filePath: string, frontmatter: JsonObject, body: string) => {
   // Filter out null/undefined values - OpenCode expects keys to be omitted rather than set to null
   const cleanedFrontmatter = Object.fromEntries(
     Object.entries(frontmatter ?? {}).filter(([, value]) => value != null)
@@ -1920,18 +1976,20 @@ export const getAgentSources = (agentName: string, workingDirectory?: string): C
   };
 };
 
-/**
- * Canonical v2 agent entity plus where it came from. `config.system` is the
- * markdown body for .md agents; `config.permissions` is always the ordered v2
- * rule array, even when the file still uses a v1 `permission` map.
- */
-export const getAgentConfig = (agentName: string, workingDirectory?: string): {
+type AgentConfigResult = {
   source: 'md' | 'json' | 'none';
   scope: AgentScope | null;
   path: string | null;
   legacy: boolean;
   config: AgentEntity;
-} => {
+};
+
+/**
+ * Canonical v2 agent entity plus where it came from. `config.system` is the
+ * markdown body for .md agents; `config.permissions` is always the ordered v2
+ * rule array, even when the file still uses a v1 `permission` map.
+ */
+export const getAgentConfig = (agentName: string, workingDirectory?: string): AgentConfigResult => {
   const { scope, path: mdPath } = getAgentScope(agentName, workingDirectory);
   if (mdPath) {
     const md = readMdAgent(mdPath);
@@ -1958,7 +2016,8 @@ const writeAgentMd = (targetPath: string, entity: AgentEntity): void => {
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
   // Native keys only: a single legacy key routes the whole file through
   // OpenCode's v1 decoder, which would drop the `permissions` array.
-  writeMdFile(targetPath, fields, system);
+  const frontmatter: JsonObject = JSON.parse(JSON.stringify(fields));
+  writeMdFile(targetPath, frontmatter, system);
 };
 
 export const createAgent = (agentName: string, config: Record<string, unknown>, workingDirectory?: string, scope?: AgentScope) => {
@@ -2002,7 +2061,7 @@ export const createAgent = (agentName: string, config: Record<string, unknown>, 
 // the v2 location instead of removing a key that was never there.
 const AGENT_REQUEST_BODY_FIELDS = ['temperature', 'top_p'];
 
-const deleteRequestBodyField = (entity: Record<string, unknown>, key: string): void => {
+const deleteRequestBodyField = (entity: JsonObject, key: string): void => {
   const request = isPlainObject(entity.request) ? entity.request : undefined;
   if (!request) return;
   const body = isPlainObject(request.body) ? request.body : undefined;
@@ -2013,14 +2072,14 @@ const deleteRequestBodyField = (entity: Record<string, unknown>, key: string): v
 };
 
 /** Drop the `#variant` suffix, keeping the provider and model. */
-const stripModelVariant = (entity: Record<string, unknown>): void => {
+const stripModelVariant = (entity: JsonObject): void => {
   const parsed = parseModelSelection(entity.model);
   if (!parsed) return;
   const stripped = formatModelSelection({ providerID: parsed.providerID, modelID: parsed.modelID });
   if (stripped) entity.model = stripped;
 };
 
-const deleteAgentField = (entity: Record<string, unknown>, field: string): void => {
+const deleteAgentField = (entity: JsonObject, field: string): void => {
   if (field === 'permission' || field === 'permissions') {
     delete entity.permissions;
     return;
@@ -2040,17 +2099,17 @@ const deleteAgentField = (entity: Record<string, unknown>, field: string): void 
  * Merge a partial update into a canonical entity. `null` removes a field,
  * `undefined` leaves it alone.
  */
-const applyAgentUpdates = (entity: AgentEntity, updates: Record<string, unknown>): AgentEntity => {
-  // `request` is copied so clearing one overlay field cannot mutate the entity
-  // the caller still holds.
-  const next: Record<string, unknown> = { ...entity };
-  if (entity.request) {
-    const request = { ...entity.request };
-    if (request.body) request.body = { ...request.body };
-    if (request.headers) request.headers = { ...request.headers };
+const applyAgentUpdates = (entity: AgentEntity, updates: JsonObject): AgentEntity => {
+  // The entity is copied into a JSON draft so clearing one overlay field cannot
+  // mutate the entity the caller still holds.
+  const next: JsonObject = JSON.parse(JSON.stringify(entity));
+  if (isPlainObject(next.request)) {
+    const request = { ...next.request };
+    if (isPlainObject(request.body)) request.body = { ...request.body };
+    if (isPlainObject(request.headers)) request.headers = { ...request.headers };
     next.request = request;
   }
-  for (const [field, value] of Object.entries(updates || {})) {
+  for (const [field, value] of Object.entries(updates)) {
     if (field === 'scope' || value === undefined) continue;
     if (value === null) {
       deleteAgentField(next, field);
@@ -2059,7 +2118,11 @@ const applyAgentUpdates = (entity: AgentEntity, updates: Record<string, unknown>
     if (field === 'permission' || field === 'permissions') {
       const rules = normalizePermissionRules(value);
       if (rules.length === 0) delete next.permissions;
-      else next.permissions = rules;
+      else next.permissions = rules.map((rule) => ({
+        action: rule.action,
+        resource: rule.resource,
+        effect: rule.effect,
+      }));
       continue;
     }
     // `prompt` is the v1 spelling of `system`; accept it so older clients keep working.
@@ -2072,7 +2135,9 @@ export const updateAgent = (agentName: string, updates: Record<string, unknown>,
   ensureDirs();
 
   const current = getAgentConfig(agentName, workingDirectory);
-  const entity: AgentEntity = applyAgentUpdates(current.config, updates);
+  // Bridge payloads are JSON; normalize once so the entity draft stays JSON-typed.
+  const parsedUpdates: JsonObject = JSON.parse(JSON.stringify(updates ?? {}));
+  const entity: AgentEntity = applyAgentUpdates(current.config, parsedUpdates);
 
   if (current.source === 'md' && current.path) {
     writeAgentMd(current.path, entity);
@@ -2083,7 +2148,7 @@ export const updateAgent = (agentName: string, updates: Record<string, unknown>,
   if (current.source === 'json') {
     const layers = readConfigLayers(workingDirectory);
     const jsonSource = getJsonEntrySource(layers, 'agents', agentName);
-    const config = (jsonSource.config || {}) as Record<string, unknown>;
+    const config = jsonSource.config || {};
     const section = isPlainObject(jsonSource.section) ? jsonSource.section : {};
     const rawSystem = section.system ?? section.prompt;
     // `{file:...}` substitution still works in OpenCode 2, so an agent whose
@@ -2136,8 +2201,8 @@ export const deleteAgent = (agentName: string, workingDirectory?: string, scope?
   const layers = readConfigLayers(workingDirectory);
 
   if (requestedScope === AGENT_SCOPE.PROJECT) {
-    if (layers.paths.projectPath && deleteSectionEntry(layers.projectConfig as Record<string, unknown>, 'agents', agentName)) {
-      writeConfig(layers.projectConfig as Record<string, unknown>, layers.paths.projectPath);
+    if (layers.paths.projectPath && deleteSectionEntry(layers.projectConfig, 'agents', agentName)) {
+      writeConfig(layers.projectConfig, layers.paths.projectPath);
       return;
     }
     throw new Error(`Project agent ${agentName} not found`);
@@ -2145,7 +2210,7 @@ export const deleteAgent = (agentName: string, workingDirectory?: string, scope?
 
   if (requestedScope === AGENT_SCOPE.USER) {
     const userJsonPath = layers.paths.customPath || layers.paths.userPath;
-    const userJsonConfig = (layers.paths.customPath ? layers.customConfig : layers.userConfig) as Record<string, unknown>;
+    const userJsonConfig = layers.paths.customPath ? layers.customConfig : layers.userConfig;
     if (userJsonPath && deleteSectionEntry(userJsonConfig, 'agents', agentName)) {
       writeConfig(userJsonConfig, userJsonPath);
       return;
@@ -2201,14 +2266,16 @@ export const getCommandSources = (commandName: string, workingDirectory?: string
   };
 };
 
-/** Canonical v2 command entity plus where it came from. */
-export const getCommandConfig = (commandName: string, workingDirectory?: string): {
+type CommandConfigResult = {
   source: 'md' | 'json' | 'none';
   scope: CommandScope | null;
   path: string | null;
   legacy: boolean;
   config: CommandEntity;
-} => {
+};
+
+/** Canonical v2 command entity plus where it came from. */
+export const getCommandConfig = (commandName: string, workingDirectory?: string): CommandConfigResult => {
   const { scope, path: mdPath } = getCommandScope(commandName, workingDirectory);
   if (mdPath) {
     const { frontmatter, body } = parseMdFile(mdPath);
@@ -2239,7 +2306,8 @@ export const getCommandConfig = (commandName: string, workingDirectory?: string)
 const writeCommandMd = (targetPath: string, entity: CommandEntity): void => {
   const { fields, template } = fromCommandEntity(entity);
   fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-  writeMdFile(targetPath, fields, template);
+  const frontmatter: JsonObject = JSON.parse(JSON.stringify(fields));
+  writeMdFile(targetPath, frontmatter, template);
 };
 
 export const createCommand = (commandName: string, config: Record<string, unknown>, workingDirectory?: string, scope?: CommandScope) => {
@@ -2279,7 +2347,7 @@ export const createCommand = (commandName: string, config: Record<string, unknow
 
 // Clearing a v1 field has to reach its v2 location: `subtask` is `subagent`,
 // and `variant` is the suffix on `model`.
-const deleteCommandField = (entity: Record<string, unknown>, field: string): void => {
+const deleteCommandField = (entity: JsonObject, field: string): void => {
   if (field === 'variant') {
     stripModelVariant(entity);
     return;
@@ -2287,9 +2355,9 @@ const deleteCommandField = (entity: Record<string, unknown>, field: string): voi
   delete entity[field === 'subtask' ? 'subagent' : field];
 };
 
-const applyCommandUpdates = (entity: CommandEntity, updates: Record<string, unknown>): CommandEntity => {
-  const next: Record<string, unknown> = { ...entity };
-  for (const [field, value] of Object.entries(updates || {})) {
+const applyCommandUpdates = (entity: CommandEntity, updates: JsonObject): CommandEntity => {
+  const next: JsonObject = JSON.parse(JSON.stringify(entity));
+  for (const [field, value] of Object.entries(updates)) {
     if (field === 'scope' || value === undefined) continue;
     if (value === null) {
       deleteCommandField(next, field);
@@ -2305,7 +2373,9 @@ export const updateCommand = (commandName: string, updates: Record<string, unkno
   ensureDirs();
 
   const current = getCommandConfig(commandName, workingDirectory);
-  const entity: CommandEntity = applyCommandUpdates(current.config, updates);
+  // Bridge payloads are JSON; normalize once so the entity draft stays JSON-typed.
+  const parsedUpdates: JsonObject = JSON.parse(JSON.stringify(updates ?? {}));
+  const entity: CommandEntity = applyCommandUpdates(current.config, parsedUpdates);
 
   if (current.source === 'md' && current.path) {
     writeCommandMd(current.path, entity);
@@ -2315,7 +2385,7 @@ export const updateCommand = (commandName: string, updates: Record<string, unkno
   if (current.source === 'json') {
     const layers = readConfigLayers(workingDirectory);
     const jsonSource = getJsonEntrySource(layers, 'commands', commandName);
-    const config = (jsonSource.config || {}) as Record<string, unknown>;
+    const config = jsonSource.config || {};
     const section = isPlainObject(jsonSource.section) ? jsonSource.section : {};
     const rawTemplate = section.template;
     if (isPromptFileReference(rawTemplate)) {
@@ -2345,7 +2415,7 @@ export const updateCommand = (commandName: string, updates: Record<string, unkno
 // `settings.baseURL`, and `models.<id>.modelID`. The v1 `provider` map with
 // `npm`/`api`/`options` is still decoded, so reads accept it; every write is v2.
 
-const providerExistsIn = (config: unknown, providerId: string): boolean =>
+const providerExistsIn = (config: JsonObject, providerId: string): boolean =>
   readSectionEntry(config, 'providers', providerId).value !== undefined;
 
 export const getProviderSources = (providerId: string, workingDirectory?: string) => {
@@ -2384,7 +2454,7 @@ export const removeProviderConfig = (providerId: string, workingDirectory?: stri
     targetPath = layers.paths.customPath;
   }
 
-  const targetConfig = getConfigForPath(layers, targetPath) as Record<string, unknown>;
+  const targetConfig = getConfigForPath(layers, targetPath);
   if (!deleteSectionEntry(targetConfig, 'providers', providerId)) {
     return false;
   }
@@ -2403,11 +2473,18 @@ const CUSTOM_PROVIDER_NPM_PACKAGES = new Set([
 ]);
 
 export type JsonValue = string | number | boolean | null | JsonObject | JsonValue[];
-export type JsonObject = { [key: string]: JsonValue };
+/**
+ * A parsed JSON object. Declared as an interface (a named owner contract) so
+ * JSONC config, YAML frontmatter, and provider settings all decode to one
+ * concrete shape instead of an open `Record<string, unknown>`.
+ */
+export interface JsonObject {
+  [key: string]: JsonValue;
+}
 type NormalizedCustomProviderConfig = {
   package: string;
   name: string;
-  settings: Record<string, unknown> & { baseURL: string };
+  settings: JsonObject & { baseURL: string };
   headers?: Record<string, string>;
   models: Record<string, { modelID: string; name: string }>;
   env?: string[];
@@ -2521,7 +2598,7 @@ export const validateCustomProviderConfig = (
 };
 
 const mergeCustomProviderConfig = (
-  existingValue: unknown,
+  existingValue: JsonValue | undefined,
   normalizedConfig: NormalizedCustomProviderConfig,
 ) => {
   // Read the existing entry through the v2 projection so a legacy
@@ -2537,12 +2614,12 @@ const mergeCustomProviderConfig = (
     }),
   );
 
-  const merged: Record<string, unknown> = {
+  const merged: JsonObject = JSON.parse(JSON.stringify({
     ...existing,
     ...normalizedConfig,
     settings: mergedSettings,
     models: mergedModels,
-  };
+  }));
   // Headers and env are explicit removals when the form omits them.
   if (!Object.prototype.hasOwnProperty.call(normalizedConfig, 'headers')) {
     delete merged.headers;
@@ -2584,8 +2661,12 @@ export const upsertProviderConfig = (
     throw new Error('Invalid scope');
   }
 
-  const targetConfig = getConfigForPath(layers, targetPath) as Record<string, unknown>;
-  const existing = readSectionEntry(targetConfig, 'providers', validated.value.providerId).value;
+  const targetConfig = getConfigForPath(layers, targetPath);
+  const existingRaw = readSectionEntry(targetConfig, 'providers', validated.value.providerId).value;
+  // The stored entry is JSON; normalize it before the merge.
+  const existing: JsonValue | undefined = existingRaw === undefined
+    ? undefined
+    : JSON.parse(JSON.stringify(existingRaw));
   const mergedConfig = mergeCustomProviderConfig(existing, validated.value.config);
   // Writes `providers`; a legacy `provider.<id>` in the same file is dropped so
   // the two spellings cannot disagree.
@@ -2833,11 +2914,13 @@ const getProjectAgentsSkillDir = (workingDirectory: string, skillName: string): 
   return path.join(workingDirectory, '.agents', 'skills', skillName);
 };
 
-const getSkillScope = (skillName: string, workingDirectory?: string): {
+type SkillScopeLookup = {
   scope: SkillScope | null;
   path: string | null;
   source: SkillSource | null;
-} => {
+};
+
+const getSkillScope = (skillName: string, workingDirectory?: string): SkillScopeLookup => {
   const discovered = discoverSkills(workingDirectory).find((skill) => skill.name === skillName);
   if (discovered?.path) {
     return { scope: discovered.scope, path: discovered.path, source: discovered.source };
@@ -3176,6 +3259,9 @@ const validateSkillName = (skillName: string): void => {
 export const createSkill = (skillName: string, config: Record<string, unknown>, workingDirectory?: string, scope?: SkillScope): void => {
   ensureSkillDirs();
   validateSkillName(skillName);
+  // Skill payloads cross the webview bridge as JSON; normalize once so the
+  // frontmatter written below is the same JSON shape OpenCode reads back.
+  const parsedConfig: JsonObject = JSON.parse(JSON.stringify(config));
   
   // Check if skill already exists
   const existing = getSkillScope(skillName, workingDirectory);
@@ -3187,7 +3273,7 @@ export const createSkill = (skillName: string, config: Record<string, unknown>, 
   let targetDir: string;
   
   const requestedScope = scope === SKILL_SCOPE.PROJECT ? SKILL_SCOPE.PROJECT : SKILL_SCOPE.USER;
-  const requestedSource: SkillSource = config.source === 'agents' ? 'agents' : 'opencode';
+  const requestedSource: SkillSource = parsedConfig.source === 'agents' ? 'agents' : 'opencode';
 
   if (requestedScope === SKILL_SCOPE.PROJECT && workingDirectory) {
     targetDir = requestedSource === 'agents'
@@ -3210,13 +3296,7 @@ export const createSkill = (skillName: string, config: Record<string, unknown>, 
     supportingFiles: supportingFilesData,
     disableModelInvocation,
     ...frontmatter
-  } = config as Record<string, unknown> & { 
-    instructions?: unknown; 
-    scope?: unknown; 
-    source?: unknown;
-    supportingFiles?: Array<{ path: string; content: string }>;
-    disableModelInvocation?: unknown;
-  };
+  } = parsedConfig;
   void _ignored;
   void _sourceIgnored;
   
@@ -3231,13 +3311,16 @@ export const createSkill = (skillName: string, config: Record<string, unknown>, 
     applyModelInvocation(frontmatter, true);
   }
   
-  writeMdFile(targetPath, frontmatter, typeof instructions === 'string' ? instructions : '');
+  writeMdFile(targetPath, frontmatter, isJsonString(instructions) ? instructions : '');
   
   // Write supporting files if provided
-  if (supportingFilesData && Array.isArray(supportingFilesData)) {
+  if (Array.isArray(supportingFilesData)) {
     for (const file of supportingFilesData) {
-      if (file.path && file.content !== undefined) {
-        writeSkillSupportingFile(targetDir, file.path, file.content);
+      if (!isPlainObject(file)) continue;
+      const relativePath = isJsonString(file.path) ? file.path : '';
+      const content = isJsonString(file.content) ? file.content : undefined;
+      if (relativePath && content !== undefined) {
+        writeSkillSupportingFile(targetDir, relativePath, content);
       }
     }
   }
@@ -3253,8 +3336,10 @@ export const updateSkill = (skillName: string, updates: Record<string, unknown>,
   const mdDir = path.dirname(mdPath);
   const mdData = parseMdFile(mdPath);
   let mdModified = false;
+  // Normalize the bridge payload to the JSON shape the frontmatter writer owns.
+  const parsedUpdates: JsonObject = JSON.parse(JSON.stringify(updates ?? {}));
   
-  for (const [field, value] of Object.entries(updates || {})) {
+  for (const [field, value] of Object.entries(parsedUpdates)) {
     if (field === 'scope' || field === 'source' || field === 'targetPath' || field === 'renameTo') continue;
     
     if (field === 'instructions') {
@@ -3265,11 +3350,14 @@ export const updateSkill = (skillName: string, updates: Record<string, unknown>,
     }
     
     if (field === 'supportingFiles' && Array.isArray(value)) {
-      for (const file of value as Array<{ delete?: boolean; path?: string; content?: string }>) {
-        if (file.delete && file.path) {
-          deleteSkillSupportingFile(mdDir, file.path);
-        } else if (file.path && file.content !== undefined) {
-          writeSkillSupportingFile(mdDir, file.path, file.content);
+      for (const file of value) {
+        if (!isPlainObject(file)) continue;
+        const filePath = isJsonString(file.path) ? file.path : '';
+        const fileContent = isJsonString(file.content) ? file.content : undefined;
+        if (file.delete && filePath) {
+          deleteSkillSupportingFile(mdDir, filePath);
+        } else if (filePath && fileContent !== undefined) {
+          writeSkillSupportingFile(mdDir, filePath, fileContent);
         }
       }
       continue;

@@ -48,7 +48,7 @@ const MissingKeyDescription: React.FC<{ text: string; linkLabel: string; onOpen:
  * Settings → Providers → Classification providers: where Jev requests go, for
  * every feature that asks Jev. Not an OpenCode provider,
  * so it has its own page instead of the provider detail view. The server owns
- * the pick and the TypeSafe key (`packages/web/server/lib/routing`).
+ * the pick and the TypeSafe key (`packages/api/server/lib/routing`).
  */
 export const ClassificationProvidersPage: React.FC<ClassificationProvidersPageProps> = ({ titleLeading, onOpenProvider }) => {
   const { t } = useI18n();

@@ -1,0 +1,25 @@
+{
+  "name": "@openchamber/cli",
+  "version": "2.1.1",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "openchamber": "./bin/cli.js"
+  },
+  "scripts": {
+    "build": "node --check bin/cli.js",
+    "type-check": "node --check bin/cli.js",
+    "lint": "node --check bin/cli.js",
+    "test": "vitest run",
+    "start": "node bin/cli.js serve"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.1.0",
+    "@openchamber/api": "workspace:*",
+    "@openchamber/web": "workspace:*",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.4"
+  }
+}

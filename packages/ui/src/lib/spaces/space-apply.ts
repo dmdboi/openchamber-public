@@ -56,7 +56,7 @@ export type SpaceApplyRefusal =
   | { kind: 'other'; failure: SpaceFailure };
 
 // The refusals after which the host applies this space only as a branch; see "Apply" in the
-// module documentation of `packages/web/server/lib/spaces`. The route is told once, at the
+// module documentation of `packages/api/server/lib/spaces`. The route is told once, at the
 // refusal (decision 7), so the cases whose next step differs keep a sentence of their own: part of
 // the last apply thrown away leaves files that stand in the way of the branch, a file git ignores
 // or one a filter such as Git LFS keeps was there before the space, and a read that ran out of

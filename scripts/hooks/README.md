@@ -21,8 +21,8 @@ the size of the commit rather than the size of the repository.
 | `.test.*`, `.spec.*`, `*.vitest.tsx` | the package's test runner, see below |
 
 The lint scopes are the directories each package's `lint` script covers:
-`packages/sdk/{src,examples}`, `packages/ui/src`, `packages/vscode/{src,webview}`
-and `packages/web/src`. Electron lints nothing. TypeScript outside them, such as
+`packages/sdk/{src,examples,tests}`, `packages/ui/{src,tests}`,
+`packages/vscode/{src,webview,tests}` and `packages/web/{src,tests}`. Electron lints nothing. TypeScript outside them, such as
 `tools/oxlint` or the root `vite.config.ts`, is not linted on commit, because CI
 does not lint it either. Keep `LINT_SCOPES` in `pre-commit.mjs` in step with
 those scripts.
@@ -36,8 +36,10 @@ list.
 
 A staged test file runs with the runner its package uses, and only that file.
 
-- Web tests, including the `bun:test` files the web Vitest config maps to its
-  shim, run through `packages/web` and its Vitest config.
+- API, CLI and web tests, including the `bun:test` files their Vitest configs
+  map to a shim, run through `vitest run` in their own package: `packages/api`,
+  `packages/cli` or `packages/web`. Keep `VITEST_PACKAGES` in `pre-commit.mjs`
+  in step with the packages whose `test` script is `vitest run`.
 - Every other test file runs through `scripts/run-isolated-tests.mjs --files`,
   which picks Bun or Node from the file's imports and runs it from the nearest
   `package.json` directory. Each file keeps its own process.

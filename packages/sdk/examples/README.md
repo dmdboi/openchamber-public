@@ -66,7 +66,7 @@ Rebuild all panels after editing `shared.ts` or the SDK. Commit built files with
 bun run --cwd packages/sdk type-check
 bun run --cwd packages/sdk lint
 bun run --cwd packages/sdk test
-bun test packages/ui/src/lib/guests/sdk-examples.test.ts
+bun test packages/ui/tests/src/lib/guests/sdk-examples.test.ts
 ```
 
 SDK checks cover example TypeScript, manifests, persistence failures, the optional MCP fixture, and freshness of every bundle. UI-owned DOM tests exercise those bundles with a simulated host. These tests never read your real config or use a provider credential.

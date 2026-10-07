@@ -304,7 +304,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
         : requestedTarget?.source.kind === 'branch'
           ? { source: branchSource ?? requestedTarget.source }
           : requestedTarget ?? { source: { kind: 'working-tree', scope } },
-    [branchSource, isCommitScope, isPrScope, readContext, requestedTarget, scope, selectedCommitHash, selectedPr]
+    [branchSource, isCommitScope, isPrScope, readContext, readsChangeRequests, requestedTarget, scope, selectedCommitHash, selectedPr]
   );
   const source = target.source;
   // A scope the person picked before its subject exists: the base of a branch
@@ -334,7 +334,7 @@ export const WalkthroughView = ({ directory: rootDirectory, visible = true }: Wa
     if (!choosingPr || !selectedPr || !readsChangeRequests || !readContext) return;
     requestTarget(directory, { source: selectedPr, context: readContext });
     setPendingSourceSelection(null);
-  }, [choosingPr, directory, readContext, requestTarget, selectedPr]);
+  }, [choosingPr, directory, readContext, readsChangeRequests, requestTarget, selectedPr]);
   useEffect(() => {
     if (!choosingBranchBase || !branchSource) return;
     requestTarget(directory, { source: branchSource });

@@ -1,7 +1,7 @@
 /**
  * Client for the OpenChamber agent memory routes.
  *
- * The store is owned by the server (`packages/web/server/lib/agent-memory`).
+ * The store is owned by the server (`packages/api/server/lib/agent-memory`).
  * This module only speaks HTTP and resolves no storage paths.
  *
  * Every function throws on failure. An authoritative read must never resolve to

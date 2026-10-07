@@ -14,10 +14,10 @@
 
 - `packages/web/src/runtimeConfig.ts`: initializes runtime URL/auth and web APIs.
 - `packages/web/src/api/index.ts`: composes web `RuntimeAPIs`.
-- `packages/web/server/lib/opencode/core-routes.js`: installs OpenChamber route families.
-- `packages/web/server/lib/opencode/feature-routes-runtime.js`: explicit feature route registration.
-- `packages/web/server/lib/opencode/proxy.js`: generic OpenCode proxy fallback.
-- `packages/web/server/lib/ui-auth/ui-auth.js`: session and URL-token route gates.
+- `packages/api/server/lib/opencode/core-routes.js`: installs OpenChamber route families.
+- `packages/api/server/lib/opencode/feature-routes-runtime.js`: explicit feature route registration.
+- `packages/api/server/lib/opencode/proxy.js`: generic OpenCode proxy fallback.
+- `packages/api/server/lib/ui-auth/ui-auth.js`: session and URL-token route gates.
 
 Explicit OpenChamber routes must register before the generic `/api/*` OpenCode proxy.
 
@@ -38,12 +38,12 @@ Review every cache keyed only by session ID, directory, URL, or entity ID. Add r
 
 ## Tests To Prefer
 
-- HTTP/request fidelity: `packages/ui/src/lib/runtime-fetch.test.ts`
-- URL/auth: `packages/ui/src/lib/runtime-url.test.ts`, `runtime-auth.test.ts`
-- Server auth: `packages/web/server/lib/ui-auth/ui-auth.test.js`
-- Generic proxy: `packages/web/server/opencode-proxy.test.js`
-- Dev-server tunnel: `packages/web/server/lib/dev-tunnel/tunnel.test.js`
-- VS Code bridge: `packages/vscode/webview/api/bridge.test.ts`
-- VS Code proxy: `packages/vscode/src/bridge-proxy-runtime.test.js`
+- HTTP/request fidelity: `packages/ui/tests/src/lib/runtime-fetch.test.ts`
+- URL/auth: `packages/ui/tests/src/lib/runtime-url.test.ts`, `runtime-auth.test.ts`
+- Server auth: `packages/web/tests/server/lib/ui-auth/ui-auth.test.js`
+- Generic proxy: `packages/web/tests/server/opencode-proxy.test.js`
+- Dev-server tunnel: `packages/web/tests/server/lib/dev-tunnel/tunnel.test.js`
+- VS Code bridge: `packages/vscode/tests/webview/api/bridge.test.ts`
+- VS Code proxy: `packages/vscode/tests/src/bridge-proxy-runtime.test.js`
 
-Also run focused tests beside new runtime implementations and validation required by each affected workspace.
+Also run the focused tests that cover a new runtime implementation, plus validation required by each affected workspace.

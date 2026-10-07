@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { buildBuiltInExtensions } from './build-builtin-extensions.mjs';
-import { readBuiltInRegistry } from '../packages/web/server/lib/guests/builtins.js';
+import { readBuiltInRegistry } from '../packages/api/server/lib/guests/builtins.js';
 
 const roots = [];
 afterEach(async () => { await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true }))); });

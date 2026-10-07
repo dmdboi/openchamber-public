@@ -48,41 +48,20 @@ export type SessionGoalChecker = 'classifier' | 'small-model';
 
 const DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR: LargeTextPasteBehavior = 'ask';
 
-const normalizeLargeTextPasteBehavior = (value: unknown): LargeTextPasteBehavior => {
-  if (value === 'attach' || value === 'inline' || value === 'ask' || value === 'inline-double-paste') {
-    return value;
-  }
-  return DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR;
-};
-
-function normalizeFileEditorKeymap(value: unknown): FileEditorKeymap {
-  return value === 'vim' ? 'vim' : 'default';
-}
+/**
+ * These parse persisted or otherwise untyped values into the store's own
+ * unions. `catch` supplies the historical fallback, so a value the union does
+ * not name lands on the same default the hand-written checks used to give it.
+ */
+const largeTextPasteBehaviorSchema = z.enum(['attach', 'inline', 'ask', 'inline-double-paste']).catch(DEFAULT_LARGE_TEXT_PASTE_BEHAVIOR);
+const fileEditorKeymapSchema = z.enum(['default', 'vim']).catch('default');
 
 export const LINEAR_ISSUE_LIST_ALL_TEAMS = 'all';
 
-function sanitizeLinearIssueListStatus(value: unknown): LinearIssueListStatus {
-  return value === 'all'
-    || value === 'backlog'
-    || value === 'todo'
-    || value === 'started'
-    || value === 'inReview'
-    || value === 'completed'
-    || value === 'canceled'
-    || value === 'duplicate'
-    ? value
-    : 'all';
-}
-
-function sanitizeLinearIssueListAssignee(value: unknown): LinearIssueListAssignee {
-  return value === 'me' || value === 'any' ? value : 'any';
-}
-
-function sanitizeLinearIssueListTeamId(value: unknown): string {
-  if (typeof value !== 'string') return LINEAR_ISSUE_LIST_ALL_TEAMS;
-  const teamId = value.trim();
-  return teamId || LINEAR_ISSUE_LIST_ALL_TEAMS;
-}
+const linearIssueListStatusSchema = z.enum(['all', 'backlog', 'todo', 'started', 'inReview', 'completed', 'canceled', 'duplicate']).catch('all');
+const linearIssueListAssigneeSchema = z.enum(['any', 'me']).catch('any');
+const linearIssueListTeamIdSchema = z.string().trim().min(1).catch(LINEAR_ISSUE_LIST_ALL_TEAMS);
+const linearIssueListPrioritySchema = z.enum(['all', 'none', 'urgent', 'high', 'medium', 'low']).catch('all');
 
 /**
  * Store the team filter under the connected instance, dropping the entry when
@@ -92,7 +71,7 @@ function sanitizeLinearIssueListTeamId(value: unknown): string {
 function writeLinearTeamIdForRuntime(
   entries: Record<string, string>,
   teamId: string,
-): Record<string, string> {
+) {
   const runtimeKey = getRuntimeKey();
   if (isTransientRuntimeKey(runtimeKey)) return entries;
   const next = { ...entries };
@@ -104,23 +83,20 @@ function writeLinearTeamIdForRuntime(
   return next;
 }
 
-function sanitizeLinearIssueListTeamIdByRuntime(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+/**
+ * The runtime-keyed team filter as persisted: a loose record whose entries are
+ * re-validated, so a value carried from an older build cannot survive as-is.
+ */
+const linearIssueListTeamIdByRuntimeSchema = z.record(z.string(), z.unknown()).transform((record) => {
   const entries: Record<string, string> = {};
-  // SAFETY: guarded above as a non-array object; every value is re-checked below.
-  for (const [runtimeKey, teamId] of Object.entries(value as Record<string, unknown>)) {
-    if (!runtimeKey.trim() || typeof teamId !== 'string') continue;
-    const sanitized = sanitizeLinearIssueListTeamId(teamId);
-    if (sanitized !== LINEAR_ISSUE_LIST_ALL_TEAMS) entries[runtimeKey] = sanitized;
+  for (const [runtimeKey, teamId] of Object.entries(record)) {
+    if (!runtimeKey.trim()) continue;
+    const parsedTeamId = linearIssueListTeamIdSchema.safeParse(teamId);
+    if (!parsedTeamId.success || parsedTeamId.data === LINEAR_ISSUE_LIST_ALL_TEAMS) continue;
+    entries[runtimeKey] = parsedTeamId.data;
   }
   return entries;
-}
-
-function sanitizeLinearIssueListPriority(value: unknown): LinearIssueListPriority {
-  return value === 'none' || value === 'urgent' || value === 'high' || value === 'medium' || value === 'low' || value === 'all'
-    ? value
-    : 'all';
-}
+}).catch({});
 
 type ContextPanelTab = {
   id: string;
@@ -214,18 +190,25 @@ const isSameTemplateValue = (
   return a.title === b.title && a.message === b.message;
 };
 
-const isLegacyDefaultTemplates = (value: unknown): boolean => {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-  const candidate = value as Record<string, { title: string; message: string } | undefined>;
-  return (
-    isSameTemplateValue(candidate.completion, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.completion)
-    && isSameTemplateValue(candidate.error, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.error)
-    && isSameTemplateValue(candidate.question, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.question)
-    && isSameTemplateValue(candidate.subtask, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.subtask)
-  );
-};
+const notificationTemplateSchema = z.object({
+  title: z.string(),
+  message: z.string(),
+});
+
+/** The four persisted templates, parsed before the legacy-default comparison. */
+const persistedNotificationTemplatesSchema = z.object({
+  completion: notificationTemplateSchema,
+  error: notificationTemplateSchema,
+  question: notificationTemplateSchema,
+  subtask: notificationTemplateSchema,
+});
+
+const isLegacyDefaultTemplates = (templates: z.infer<typeof persistedNotificationTemplatesSchema>): boolean => (
+  isSameTemplateValue(templates.completion, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.completion)
+  && isSameTemplateValue(templates.error, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.error)
+  && isSameTemplateValue(templates.question, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.question)
+  && isSameTemplateValue(templates.subtask, LEGACY_DEFAULT_NOTIFICATION_TEMPLATES.subtask)
+);
 
 const CONTEXT_PANEL_DEFAULT_WIDTH = 380;
 const CONTEXT_PANEL_MIN_WIDTH = 320;
@@ -308,21 +291,18 @@ const normalizeContextTabLabel = (value: string | null | undefined): string | nu
     : trimmed;
 };
 
-const normalizePendingDiffScope = (value: unknown): PendingDiffScope | null => {
-  return value === 'working' || value === 'staged' || value === 'turn' || value === 'branch' || value === 'commit' || value === 'pr' ? value : null;
-};
+const pendingDiffScopeSchema = z.enum(['working', 'staged', 'turn', 'branch', 'commit', 'pr']).nullable().catch(null);
 
 /** A plan tab's owner must be a complete project reference or nothing; a
     half-valid one is worse than none because it points the editor somewhere. */
-const normalizeContextPanelProjectPlanRef = (value: unknown): ProjectRef | null => {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null;
-  }
-  const candidate = value as { id?: unknown; path?: unknown };
-  const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
-  const path = typeof candidate.path === 'string' ? candidate.path.trim() : '';
-  return id && path ? { id, path } : null;
-};
+const contextPanelProjectPlanRefSchema = z.object({
+  id: z.string(),
+  path: z.string(),
+}).transform(({ id, path }) => {
+  const normalizedId = id.trim();
+  const normalizedPath = path.trim();
+  return normalizedId && normalizedPath ? { id: normalizedId, path: normalizedPath } : null;
+}).catch(null);
 
 const buildDefaultContextPanelTabDedupeKey = (mode: ContextPanelMode, targetPath: string | null): string => {
   if (mode === 'file') {
@@ -377,13 +357,13 @@ const createContextPanelTab = (descriptor: ContextPanelTabDescriptor): ContextPa
     projectPlanId: typeof descriptor.projectPlanId === 'string' && descriptor.projectPlanId.trim()
       ? descriptor.projectPlanId.trim()
       : null,
-    projectPlanRef: normalizeContextPanelProjectPlanRef(descriptor.projectPlanRef),
+    projectPlanRef: contextPanelProjectPlanRefSchema.parse(descriptor.projectPlanRef),
     dedupeKey,
     label: normalizeContextTabLabel(descriptor.label),
     sessionTitleFallback: normalizeContextTabLabel(descriptor.sessionTitleFallback),
     readOnly: descriptor.readOnly === true,
     stagedDiff: descriptor.stagedDiff === true,
-    diffScope: normalizePendingDiffScope(descriptor.diffScope) ?? (descriptor.stagedDiff === true ? 'staged' : 'working'),
+    diffScope: pendingDiffScopeSchema.parse(descriptor.diffScope) ?? (descriptor.stagedDiff === true ? 'staged' : 'working'),
     preview: descriptor.mode === 'file' && descriptor.preview === true,
     touchedAt: Date.now(),
   };
@@ -421,40 +401,44 @@ const clampContextPanelTabs = (
   return removeSet.size === 0 ? tabs : tabs.filter((tab) => !removeSet.has(tab.id));
 };
 
-const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
-  if (!Array.isArray(tabs)) {
-    return [];
+const persistedContextPanelTabSchema = z.looseObject({
+  mode: z.string(),
+  targetPath: z.string().nullish().catch(undefined),
+  targetDirectory: z.string().nullish().catch(undefined),
+  projectPlanId: z.string().nullish().catch(undefined),
+  projectPlanRef: contextPanelProjectPlanRefSchema,
+  dedupeKey: z.string().nullish().catch(undefined),
+  label: z.string().nullish().catch(undefined),
+  sessionTitleFallback: z.string().nullish().catch(undefined),
+  readOnly: z.boolean().optional().catch(undefined),
+  stagedDiff: z.boolean().optional().catch(undefined),
+  diffScope: pendingDiffScopeSchema,
+  preview: z.boolean().optional().catch(undefined),
+  touchedAt: z.number().optional().catch(undefined),
+});
+type PersistedContextPanelTab = z.infer<typeof persistedContextPanelTabSchema>;
+
+/** Persisted tabs: a loose array whose malformed entries are dropped one by one. */
+const persistedContextPanelTabsSchema = z.array(z.unknown()).transform((entries) => {
+  const tabs: PersistedContextPanelTab[] = [];
+  for (const entry of entries) {
+    const parsed = persistedContextPanelTabSchema.safeParse(entry);
+    if (parsed.success) tabs.push(parsed.data);
   }
+  return tabs;
+}).catch([]);
+
+const sanitizeContextPanelTabs = (tabs: readonly PersistedContextPanelTab[]): ContextPanelTab[] => {
   const dropBrowserTabs = isVSCodeRuntime();
 
   const result: ContextPanelTab[] = [];
   const seen = new Set<string>();
 
-  for (const entry of tabs) {
-    if (!entry || typeof entry !== 'object') {
-      continue;
-    }
-
-    const candidate = entry as {
-      mode?: unknown;
-      targetPath?: unknown;
-      targetDirectory?: string | null;
-      projectPlanId?: unknown;
-      projectPlanRef?: unknown;
-      dedupeKey?: unknown;
-      label?: unknown;
-      sessionTitleFallback?: unknown;
-      readOnly?: unknown;
-      stagedDiff?: unknown;
-      diffScope?: unknown;
-      preview?: unknown;
-      touchedAt?: unknown;
-    };
-
+  for (const candidate of tabs) {
     // Legacy 'preview' tabs are converted to 'browser' by the v14 migration;
     // anything still carrying an unknown mode here is discarded rather than
     // resurrected into a tab the panel cannot render.
-    if (typeof candidate.mode !== 'string' || !isContextPanelMode(candidate.mode)) {
+    if (!isContextPanelMode(candidate.mode)) {
       continue;
     }
 
@@ -464,14 +448,14 @@ const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
       continue;
     }
 
-    const targetPath = normalizeContextTargetPath(typeof candidate.targetPath === 'string' ? candidate.targetPath : null);
+    const targetPath = normalizeContextTargetPath(candidate.targetPath);
     const targetDirectory = candidate.mode === 'terminal'
       ? normalizeContextTargetDirectory(candidate.targetDirectory)
       : null;
     const projectPlanId = typeof candidate.projectPlanId === 'string' && candidate.projectPlanId.trim()
       ? candidate.projectPlanId.trim()
       : null;
-    const projectPlanRef = normalizeContextPanelProjectPlanRef(candidate.projectPlanRef);
+    const projectPlanRef = candidate.projectPlanRef;
     // `mode: 'plan'` covers two documents: a saved Project knowledge plan
     // (needs both the plan id and its owning project) and a plain session
     // filesystem plan (has neither). Only the half-identified form — id
@@ -484,7 +468,7 @@ const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
     const dedupeKey = normalizeContextPanelTabDedupeKey(
       candidate.mode,
       targetPath,
-      typeof candidate.dedupeKey === 'string' ? candidate.dedupeKey : null,
+      candidate.dedupeKey,
     );
     const id = buildContextPanelTabID(candidate.mode, dedupeKey);
     if (!id || seen.has(id)) {
@@ -500,11 +484,11 @@ const sanitizeContextPanelTabs = (tabs: unknown): ContextPanelTab[] => {
       projectPlanId,
       projectPlanRef,
       dedupeKey,
-      label: normalizeContextTabLabel(typeof candidate.label === 'string' ? candidate.label : null),
-      sessionTitleFallback: normalizeContextTabLabel(typeof candidate.sessionTitleFallback === 'string' ? candidate.sessionTitleFallback : null),
+      label: normalizeContextTabLabel(candidate.label),
+      sessionTitleFallback: normalizeContextTabLabel(candidate.sessionTitleFallback),
       readOnly: candidate.readOnly === true,
       stagedDiff: candidate.stagedDiff === true,
-      diffScope: normalizePendingDiffScope(candidate.diffScope) ?? (candidate.stagedDiff === true ? 'staged' : 'working'),
+      diffScope: candidate.diffScope ?? (candidate.stagedDiff === true ? 'staged' : 'working'),
       preview: candidate.mode === 'file' && candidate.preview === true,
       touchedAt: typeof candidate.touchedAt === 'number' && Number.isFinite(candidate.touchedAt)
         ? candidate.touchedAt
@@ -725,38 +709,36 @@ const setContextPanelTabTargetPath = (
   ),
 });
 
-const sanitizeContextPanelByDirectory = (
-  value: unknown,
-): Record<string, ContextPanelDirectoryState> => {
-  if (!value || typeof value !== 'object') {
-    return {};
-  }
+const persistedContextPanelDirectoryStateSchema = z.looseObject({
+  isOpen: z.boolean().optional().catch(undefined),
+  expanded: z.boolean().optional().catch(undefined),
+  tabs: persistedContextPanelTabsSchema,
+  activeTabId: z.string().optional().catch(undefined),
+  touchedAt: z.number().optional().catch(undefined),
+  mode: z.string().optional().catch(undefined),
+  targetPath: z.string().nullish().catch(undefined),
+  targetDirectory: z.string().nullish().catch(undefined),
+  dedupeKey: z.string().nullish().catch(undefined),
+  label: z.string().nullish().catch(undefined),
+});
 
-  const source = value as Record<string, unknown>;
+/** Persisted per-directory panel state: a loose record, each entry re-validated. */
+const persistedContextPanelByDirectorySchema = z.record(z.string(), z.unknown()).transform((source) => {
   const next: Record<string, ContextPanelDirectoryState> = {};
 
   for (const [rawDirectory, rawState] of Object.entries(source)) {
     const directory = normalizeDirectoryPath(rawDirectory);
-    if (!directory || !rawState || typeof rawState !== 'object') {
+    if (!directory) {
       continue;
     }
-
-    const candidate = rawState as {
-      isOpen?: unknown;
-      expanded?: unknown;
-      tabs?: unknown;
-      activeTabId?: unknown;
-      widthByMode?: unknown;
-      touchedAt?: unknown;
-      mode?: unknown;
-      targetPath?: unknown;
-      targetDirectory?: string | null;
-      dedupeKey?: unknown;
-      label?: unknown;
-    };
+    const parsedState = persistedContextPanelDirectoryStateSchema.safeParse(rawState);
+    if (!parsedState.success) {
+      continue;
+    }
+    const candidate = parsedState.data;
 
     let tabs = sanitizeContextPanelTabs(candidate.tabs);
-    let activeTabId = typeof candidate.activeTabId === 'string' ? candidate.activeTabId : null;
+    let activeTabId = candidate.activeTabId ?? null;
 
     // Legacy single-tab state can name a saved project plan, but it carries
     // no owner and cannot be migrated into an openable saved-plan tab — that
@@ -765,10 +747,10 @@ const sanitizeContextPanelByDirectory = (
     if (tabs.length === 0 && (candidate.mode === 'diff' || candidate.mode === 'file' || candidate.mode === 'context' || candidate.mode === 'plan' || candidate.mode === 'chat' || candidate.mode === 'terminal')) {
       tabs = [createContextPanelTab({
         mode: candidate.mode,
-        targetPath: typeof candidate.targetPath === 'string' ? candidate.targetPath : null,
+        targetPath: candidate.targetPath ?? null,
         targetDirectory: candidate.targetDirectory,
-        dedupeKey: typeof candidate.dedupeKey === 'string' ? candidate.dedupeKey : null,
-        label: typeof candidate.label === 'string' ? candidate.label : null,
+        dedupeKey: candidate.dedupeKey ?? null,
+        label: candidate.label ?? null,
       })];
       activeTabId = tabs[0]?.id ?? null;
     }
@@ -780,7 +762,7 @@ const sanitizeContextPanelByDirectory = (
     // per-surface, seeded from registry defaults until the user resizes.
     const widthByMode: Partial<Record<ContextPanelMode, number>> = {};
     const widthFractionByMode: Partial<Record<ContextPanelMode, number>> = {};
-    const savedWidths = persistedPanelWidthsSchema.parse(rawState);
+    const savedWidths = persistedPanelWidthsSchema.parse(candidate);
     for (const mode of contextPanelModeSchema.options) {
       const pixels = savedWidths.widthByMode[mode];
       const fraction = savedWidths.widthFractionByMode[mode];
@@ -802,12 +784,12 @@ const sanitizeContextPanelByDirectory = (
   }
 
   return next;
-};
+}).catch({});
 
 const clampContextPanelRoots = (
   byDirectory: Record<string, ContextPanelDirectoryState>,
   maxRoots: number
-): Record<string, ContextPanelDirectoryState> => {
+) => {
   const entries = Object.entries(byDirectory);
   if (entries.length <= maxRoots) {
     return byDirectory;
@@ -820,6 +802,94 @@ const clampContextPanelRoots = (
   }
   return next;
 };
+
+const legacyWidthByModeSchema = z.looseObject({
+  preview: z.unknown().optional(),
+  browser: z.unknown().optional(),
+});
+
+const legacyContextPanelTabSchema = z.looseObject({
+  mode: z.string().optional().catch(undefined),
+  id: z.string().optional().catch(undefined),
+  targetPath: z.string().optional().catch(undefined),
+  dedupeKey: z.string().optional().catch(undefined),
+});
+type LegacyContextPanelTab = z.infer<typeof legacyContextPanelTabSchema>;
+
+const legacyContextPanelDirectorySchema = z.looseObject({
+  widthByMode: z.unknown().optional(),
+  tabs: z.array(z.unknown()).optional(),
+  activeTabId: z.string().nullish().catch(undefined),
+});
+type LegacyContextPanelDirectory = z.infer<typeof legacyContextPanelDirectorySchema>;
+
+/**
+ * v13 → v14: the separate 'preview' surface merged into 'browser'. Stored
+ * preview tabs keep their URL and become browser tabs; their id encodes the
+ * mode, so it is rebuilt rather than left dangling. Persisted widths recorded
+ * under 'preview' carry over only when the user has not already sized the
+ * browser surface.
+ */
+const migrateLegacyContextPanelDirectory = (entry: LegacyContextPanelDirectory): LegacyContextPanelDirectory => {
+  const parsedWidths = legacyWidthByModeSchema.safeParse(entry.widthByMode);
+  if (parsedWidths.success && parsedWidths.data.preview !== undefined) {
+    if (parsedWidths.data.browser === undefined) parsedWidths.data.browser = parsedWidths.data.preview;
+    delete parsedWidths.data.preview;
+    entry.widthByMode = parsedWidths.data;
+  }
+
+  if (!Array.isArray(entry.tabs)) return entry;
+  const seenIds = new Set<string>();
+  const migrated: LegacyContextPanelTab[] = [];
+  for (const rawTab of entry.tabs) {
+    const parsedTab = legacyContextPanelTabSchema.safeParse(rawTab);
+    if (!parsedTab.success) continue;
+    const tab = parsedTab.data;
+    if (tab.mode !== 'preview') {
+      if (typeof tab.id === 'string') seenIds.add(tab.id);
+      migrated.push(tab);
+      continue;
+    }
+
+    const targetPath = typeof tab.targetPath === 'string' ? tab.targetPath : '';
+    const dedupeKey = typeof tab.dedupeKey === 'string' && tab.dedupeKey.trim()
+      ? tab.dedupeKey.trim()
+      : (targetPath || 'browser');
+    const id = dedupeKey === 'browser' ? 'browser' : `browser:${dedupeKey}`;
+    // A converted tab can collide with a browser tab on the same URL; keep the
+    // existing one rather than producing duplicates.
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    migrated.push({ ...tab, mode: 'browser', id, dedupeKey });
+  }
+  entry.tabs = migrated;
+
+  if (typeof entry.activeTabId === 'string' && entry.activeTabId.startsWith('preview')) {
+    const nextActive = migrated.find((tab) => typeof tab.id === 'string');
+    entry.activeTabId = nextActive && typeof nextActive.id === 'string' ? nextActive.id : null;
+  }
+  return entry;
+};
+
+const migratedLegacyContextPanelByDirectorySchema = z.record(z.string(), z.unknown()).transform((byDirectory) => {
+  const next: Record<string, LegacyContextPanelDirectory> = {};
+  for (const [directory, rawDirectoryState] of Object.entries(byDirectory)) {
+    const parsed = legacyContextPanelDirectorySchema.safeParse(rawDirectoryState);
+    if (parsed.success) next[directory] = migrateLegacyContextPanelDirectory(parsed.data);
+  }
+  return next;
+}).catch({});
+
+const shortcutOverridesSchema = z.record(z.string(), z.unknown()).transform((record) => {
+  const cleaned: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'string') cleaned[key] = value;
+  }
+  return cleaned;
+}).catch({});
+
+/** The persisted store snapshot at the hydration boundary. */
+const persistedUIStateSchema = z.record(z.string(), z.unknown()).catch({});
 
 interface UIStore {
 
@@ -1683,7 +1753,7 @@ export const useUIStore = create<UIStore>()(
             return;
           }
 
-          const diffScope = normalizePendingDiffScope(scope) ?? (staged ? 'staged' : 'working');
+          const diffScope = pendingDiffScopeSchema.parse(scope) ?? (staged ? 'staged' : 'working');
 
           get().openContextPanelTab(normalizedDirectory, {
             mode: 'diff',
@@ -2563,15 +2633,15 @@ export const useUIStore = create<UIStore>()(
         },
 
         setLinearIssueListStatus: (status) => {
-          set({ linearIssueListStatus: sanitizeLinearIssueListStatus(status) });
+          set({ linearIssueListStatus: linearIssueListStatusSchema.parse(status) });
         },
 
         setLinearIssueListAssignee: (assignee) => {
-          set({ linearIssueListAssignee: sanitizeLinearIssueListAssignee(assignee) });
+          set({ linearIssueListAssignee: linearIssueListAssigneeSchema.parse(assignee) });
         },
 
         setLinearIssueListTeamId: (teamId) => {
-          const sanitized = sanitizeLinearIssueListTeamId(teamId);
+          const sanitized = linearIssueListTeamIdSchema.parse(teamId);
           set((state) => ({
             linearIssueListTeamId: sanitized,
             linearIssueListTeamIdByRuntime: writeLinearTeamIdForRuntime(state.linearIssueListTeamIdByRuntime, sanitized),
@@ -2588,7 +2658,7 @@ export const useUIStore = create<UIStore>()(
         },
 
         setLinearIssueListPriority: (priority) => {
-          set({ linearIssueListPriority: sanitizeLinearIssueListPriority(priority) });
+          set({ linearIssueListPriority: linearIssueListPrioritySchema.parse(priority) });
         },
 
         resetLinearIssueListFilters: () => {
@@ -2988,7 +3058,7 @@ export const useUIStore = create<UIStore>()(
           set({ inputSpellcheckEnabled: value });
         },
         setLargeTextPasteBehavior: (value) => {
-          set({ largeTextPasteBehavior: normalizeLargeTextPasteBehavior(value) });
+          set({ largeTextPasteBehavior: largeTextPasteBehaviorSchema.parse(value) });
         },
         setEnterToSend: (value) => {
           set({ enterToSend: value });
@@ -3086,7 +3156,7 @@ export const useUIStore = create<UIStore>()(
         },
 
         setFileEditorKeymap: (value) => {
-          set({ fileEditorKeymap: normalizeFileEditorKeymap(value) });
+          set({ fileEditorKeymap: fileEditorKeymapSchema.parse(value) });
         },
 
         toggleExpandedInput: () => {
@@ -3105,7 +3175,10 @@ export const useUIStore = create<UIStore>()(
           if (!persistedState || typeof persistedState !== 'object') {
             return persistedState;
           }
-          const state = persistedState as Record<string, unknown>;
+          // Hydration boundary: the blob is this store's own previous snapshot
+          // plus historical keys, so it is read as a loose record and every
+          // field the migrations below trust is re-validated where it is used.
+          const state = persistedUIStateSchema.parse(persistedState);
 
           // v20 -> v21: enable telemetry by default; preserve explicit choices.
           if (version < 21 && state.workStatusHiddenSectionsExplicit !== true) {
@@ -3144,52 +3217,7 @@ export const useUIStore = create<UIStore>()(
           // Persisted widths recorded under 'preview' carry over only when the
           // user has not already sized the browser surface.
           if (version < 14) {
-            const byDirectory = state.contextPanelByDirectory;
-            if (byDirectory && typeof byDirectory === 'object') {
-              for (const directoryState of Object.values(byDirectory as Record<string, unknown>)) {
-                if (!directoryState || typeof directoryState !== 'object') continue;
-                const entry = directoryState as Record<string, unknown>;
-
-                const widths = entry.widthByMode;
-                if (widths && typeof widths === 'object') {
-                  const widthRecord = widths as Record<string, unknown>;
-                  if (widthRecord.preview !== undefined) {
-                    if (widthRecord.browser === undefined) widthRecord.browser = widthRecord.preview;
-                    delete widthRecord.preview;
-                  }
-                }
-
-                if (!Array.isArray(entry.tabs)) continue;
-                const seenIds = new Set<string>();
-                const migrated: Array<Record<string, unknown>> = [];
-                for (const rawTab of entry.tabs as Array<unknown>) {
-                  if (!rawTab || typeof rawTab !== 'object') continue;
-                  const tab = rawTab as Record<string, unknown>;
-                  if (tab.mode !== 'preview') {
-                    if (typeof tab.id === 'string') seenIds.add(tab.id);
-                    migrated.push(tab);
-                    continue;
-                  }
-
-                  const targetPath = typeof tab.targetPath === 'string' ? tab.targetPath : '';
-                  const dedupeKey = typeof tab.dedupeKey === 'string' && tab.dedupeKey.trim()
-                    ? tab.dedupeKey.trim()
-                    : (targetPath || 'browser');
-                  const id = dedupeKey === 'browser' ? 'browser' : `browser:${dedupeKey}`;
-                  // A converted tab can collide with a browser tab on the same
-                  // URL; keep the existing one rather than producing duplicates.
-                  if (seenIds.has(id)) continue;
-                  seenIds.add(id);
-                  migrated.push({ ...tab, mode: 'browser', id, dedupeKey });
-                }
-                entry.tabs = migrated;
-
-                if (typeof entry.activeTabId === 'string' && entry.activeTabId.startsWith('preview')) {
-                  const nextActive = migrated.find((tab) => typeof tab.id === 'string');
-                  entry.activeTabId = nextActive && typeof nextActive.id === 'string' ? nextActive.id : null;
-                }
-              }
-            }
+            state.contextPanelByDirectory = migratedLegacyContextPanelByDirectorySchema.parse(state.contextPanelByDirectory);
           }
 
           // v12 -> v13: promote FilesView localStorage autosave toggle into the store.
@@ -3249,7 +3277,8 @@ export const useUIStore = create<UIStore>()(
 
           // v0 -> v1: reset legacy notification templates
           if (version < 1) {
-            if (isLegacyDefaultTemplates(state.notificationTemplates)) {
+            const templates = persistedNotificationTemplatesSchema.safeParse(state.notificationTemplates);
+            if (templates.success && isLegacyDefaultTemplates(templates.data)) {
               state.notificationTemplates = {
                 completion: { ...EMPTY_NOTIFICATION_TEMPLATES.completion },
                 error: { ...EMPTY_NOTIFICATION_TEMPLATES.error },
@@ -3286,29 +3315,20 @@ export const useUIStore = create<UIStore>()(
           delete state.rightSidebarWidth;
           delete state.rightSidebarTab;
 
-          state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+          state.contextPanelByDirectory = persistedContextPanelByDirectorySchema.parse(state.contextPanelByDirectory);
 
           if (version < 5) {
-            if (!state.shortcutOverrides || typeof state.shortcutOverrides !== 'object') {
-              state.shortcutOverrides = {};
-            } else {
-              const overrides = state.shortcutOverrides as Record<string, unknown>;
-              const cleaned: Record<string, string> = {};
-              for (const [key, value] of Object.entries(overrides)) {
-                if (typeof key === 'string' && typeof value === 'string') {
-                  cleaned[key] = value;
-                }
-              }
-              state.shortcutOverrides = cleaned;
-            }
+            state.shortcutOverrides = state.shortcutOverrides && typeof state.shortcutOverrides === 'object'
+              ? shortcutOverridesSchema.parse(state.shortcutOverrides)
+              : {};
           }
 
           if (version < 6) {
-            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+            state.contextPanelByDirectory = persistedContextPanelByDirectorySchema.parse(state.contextPanelByDirectory);
           }
 
           if (version < 7) {
-            state.contextPanelByDirectory = sanitizeContextPanelByDirectory(state.contextPanelByDirectory);
+            state.contextPanelByDirectory = persistedContextPanelByDirectorySchema.parse(state.contextPanelByDirectory);
           }
 
           if (version < 8) {
@@ -3317,17 +3337,17 @@ export const useUIStore = create<UIStore>()(
             }
           }
 
-          state.linearIssueListStatus = sanitizeLinearIssueListStatus(state.linearIssueListStatus);
-          state.linearIssueListAssignee = sanitizeLinearIssueListAssignee(state.linearIssueListAssignee);
+          state.linearIssueListStatus = linearIssueListStatusSchema.parse(state.linearIssueListStatus);
+          state.linearIssueListAssignee = linearIssueListAssigneeSchema.parse(state.linearIssueListAssignee);
           // v18 -> v19: the team filter became per instance. The legacy flat
           // value names a team in one workspace with nothing to say which
           // instance it came from, so it is dropped rather than guessed at.
           delete state.linearIssueListTeamId;
-          state.linearIssueListTeamIdByRuntime = sanitizeLinearIssueListTeamIdByRuntime(state.linearIssueListTeamIdByRuntime);
-          state.linearIssueListPriority = sanitizeLinearIssueListPriority(state.linearIssueListPriority);
+          state.linearIssueListTeamIdByRuntime = linearIssueListTeamIdByRuntimeSchema.parse(state.linearIssueListTeamIdByRuntime);
+          state.linearIssueListPriority = linearIssueListPrioritySchema.parse(state.linearIssueListPriority);
 
-          state.fileEditorKeymap = normalizeFileEditorKeymap(state.fileEditorKeymap);
-          state.largeTextPasteBehavior = normalizeLargeTextPasteBehavior(state.largeTextPasteBehavior);
+          state.fileEditorKeymap = fileEditorKeymapSchema.parse(state.fileEditorKeymap);
+          state.largeTextPasteBehavior = largeTextPasteBehaviorSchema.parse(state.largeTextPasteBehavior);
 
           if (state.toolJsonViewMode !== 'summary'
             && state.toolJsonViewMode !== 'formatted'

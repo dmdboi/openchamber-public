@@ -5,9 +5,9 @@
 // fast enough to run on every commit. TypeScript and TSX inside a package lint
 // scope go through the repository ESLint config, the other text formats are
 // syntax-checked against their staged content, and staged test files run with
-// the runner their package uses. Bun and Node tests
-// go through scripts/run-isolated-tests.mjs one file per process; web tests go
-// through the web package's Vitest config. See README.md beside this file for
+// the runner their package uses. Bun and Node tests go through
+// scripts/run-isolated-tests.mjs one file per process; API, CLI and web tests go
+// through their own package's Vitest config. See README.md beside this file for
 // the policy.
 //
 // Exit code 0 means every staged file passed, or nothing was staged. Exit code
@@ -21,8 +21,10 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
-const WEB_ROOT = path.join(REPO_ROOT, 'packages', 'web');
-const VITEST_BIN = path.join(WEB_ROOT, 'node_modules', 'vitest', 'vitest.mjs');
+// Packages whose `test` script is `vitest run`. Their Vitest configs map
+// `bun:test` to a shim and add aliases, so their tests must not go to the
+// isolated runner.
+const VITEST_PACKAGES = ['packages/api', 'packages/cli', 'packages/web'];
 const ISOLATED_RUNNER = path.join(REPO_ROOT, 'scripts', 'run-isolated-tests.mjs');
 
 // Tracked files can still slip under these directories when they are force
@@ -64,10 +66,14 @@ const JSONC_FILE = /(?:^|\/)(?:knip\.json|[jt]sconfig(?:\.[^/]*)?\.json|\.vscode
 const LINT_SCOPES = [
   'packages/sdk/src/',
   'packages/sdk/examples/',
+  'packages/sdk/tests/',
   'packages/ui/src/',
+  'packages/ui/tests/',
   'packages/vscode/src/',
   'packages/vscode/webview/',
+  'packages/vscode/tests/',
   'packages/web/src/',
+  'packages/web/tests/',
 ];
 
 const SHELL_SHEBANG = /^#!.*\b(?:ba)?sh\b/;
@@ -123,7 +129,7 @@ export function selectPartiallyStaged(stagedPaths, unstagedPaths) {
   return stagedPaths.filter((filePath) => unstaged.has(filePath));
 }
 
-/** Test files, including the UI `*.vitest.tsx` cases the web config runs. */
+/** Test files, including the UI `*.vitest.tsx` cases a Vitest config runs. */
 export function isTestFile(filePath) {
   return TEST_FILE.test(filePath) && !isIgnoredPath(filePath);
 }
@@ -132,23 +138,27 @@ export function selectTestFiles(filePaths) {
   return filePaths.filter((filePath) => isTestFile(filePath));
 }
 
-// The web package's `test` script is `vitest run`, and its Vitest config maps
-// `bun:test` to a shim, so every web test belongs to Vitest. The UI
-// `*.vitest.tsx` files are in the same config's include list.
-export function isWebVitestFile(filePath) {
-  if (filePath.startsWith('packages/web/')) return true;
-  return /^packages\/ui\/src\/.*\.vitest\.tsx$/.test(filePath);
+/**
+ * The Vitest package that runs a test file, or `null` for the isolated runner.
+ * The UI `*.vitest.tsx` files need the web build's Vite transforms, so they run
+ * through the web config.
+ */
+export function vitestPackageFor(filePath) {
+  const owner = VITEST_PACKAGES.find((packageDir) => filePath.startsWith(`${packageDir}/`));
+  if (owner) return owner;
+  return /^packages\/ui\/tests\/src\/.*\.vitest\.tsx$/.test(filePath) ? 'packages/web' : null;
 }
 
-/** Splits staged test files between the web Vitest run and the isolated runner. */
+/** Groups staged test files by Vitest package; the rest go to the isolated runner. */
 export function planTestRuns(filePaths) {
-  const webVitest = [];
+  const vitest = {};
   const isolated = [];
   for (const filePath of filePaths) {
-    if (isWebVitestFile(filePath)) webVitest.push(filePath);
+    const packageDir = vitestPackageFor(filePath);
+    if (packageDir) (vitest[packageDir] ??= []).push(filePath);
     else isolated.push(filePath);
   }
-  return { webVitest, isolated };
+  return { vitest, isolated };
 }
 
 const runGitPaths = (args) => parseStagedPaths(
@@ -366,19 +376,26 @@ function isolatedTestFailures(files) {
   return result.status === 0 ? [] : ['staged Bun and Node tests failed above.'];
 }
 
-// Every web test file, `bun:test` ones included, runs through the web package's
-// Vitest config. The config maps `bun:test` to its shim, so the isolated
-// runner would run them without that.
-function webVitestFailures(files) {
-  if (files.length === 0) return [];
-  if (!existsSync(VITEST_BIN)) return ['Vitest is not installed; run `bun install` before committing.'];
-  const result = spawnSync(
-    process.execPath,
-    [VITEST_BIN, 'run', ...files.map((file) => path.resolve(REPO_ROOT, file))],
-    { cwd: WEB_ROOT, stdio: 'inherit' },
-  );
-  if (result.error) return [`Vitest failed to start: ${result.error.message}`];
-  return result.status === 0 ? [] : ['staged web tests failed above.'];
+// Each Vitest package runs its staged files once, from its own directory, so
+// its config and its `bun:test` shim apply.
+function vitestFailures(filesByPackage) {
+  const failures = [];
+  for (const [packageDir, files] of Object.entries(filesByPackage)) {
+    const packageRoot = path.join(REPO_ROOT, packageDir);
+    const binary = path.join(packageRoot, 'node_modules', 'vitest', 'vitest.mjs');
+    if (!existsSync(binary)) {
+      failures.push(`${packageDir}: Vitest is not installed; run \`bun install\` before committing.`);
+      continue;
+    }
+    const result = spawnSync(
+      process.execPath,
+      [binary, 'run', ...files.map((file) => path.resolve(REPO_ROOT, file))],
+      { cwd: packageRoot, stdio: 'inherit' },
+    );
+    if (result.error) failures.push(`${packageDir}: Vitest failed to start: ${result.error.message}`);
+    else if (result.status !== 0) failures.push(`${packageDir}: staged Vitest tests failed above.`);
+  }
+  return failures;
 }
 
 function main() {
@@ -403,7 +420,8 @@ function main() {
     console.error('pre-commit: stage everything, or stash the unstaged part, to test exactly what you commit.');
   }
   if (testFiles.length > 0) {
-    console.log(`pre-commit: running ${testFiles.length} staged test file(s) (${testRuns.webVitest.length} web, ${testRuns.isolated.length} isolated).`);
+    const vitestCount = Object.values(testRuns.vitest).reduce((count, files) => count + files.length, 0);
+    console.log(`pre-commit: running ${testFiles.length} staged test file(s) (${vitestCount} Vitest, ${testRuns.isolated.length} isolated).`);
   }
 
   const failures = [
@@ -414,7 +432,7 @@ function main() {
     ...shellFailures(plan.shell, readContent),
     ...yamlFailures(plan.yaml, readContent),
     ...isolatedTestFailures(testRuns.isolated),
-    ...webVitestFailures(testRuns.webVitest),
+    ...vitestFailures(testRuns.vitest),
   ];
 
   if (failures.length > 0) {

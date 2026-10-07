@@ -49,7 +49,7 @@ Decision: stay independent. It covers only OpenCode's API, while files, git, ter
 - Copilot: one long-lived GitHub token sent directly, no refresh, no conflict. The gatekeeper could hold it later.
 - Claude Pro/Max: OpenCode removed this login in 1.3.0 because Anthropic prohibits it. API keys only.
 - API-key providers: `options.apiKey` and `options.baseURL` in the provider config, with no stored auth entry, skip the auth plugin. That is the window path.
-- Suspected and unverified on `main`: `packages/web/server/lib/small-model/call.js` refreshes the same OpenAI token separately from OpenCode without locking. Tracked as its own task.
+- Suspected and unverified on `main`: `packages/api/server/lib/small-model/call.js` refreshes the same OpenAI token separately from OpenCode without locking. Tracked as its own task.
 
 ## Apple container
 

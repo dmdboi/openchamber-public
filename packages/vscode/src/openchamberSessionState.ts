@@ -4,7 +4,7 @@
  *
  * OpenCode 2.x has no archive route, so archive flags are OpenChamber's own. The
  * OpenChamber server keeps them in a JSON file beside its OpenCode instance
- * (`packages/web/server/lib/openchamber-sessions/`); the extension host has no
+ * (`packages/api/server/lib/openchamber-sessions/`); the extension host has no
  * server process, so it keeps the same file itself, in the shared OpenChamber
  * config directory, which is also the web server's default data directory: a
  * session archived from VS Code stays archived in the desktop app on the same
