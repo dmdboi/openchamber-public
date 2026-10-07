@@ -69,21 +69,6 @@ const summaryRefsSchema = z.array(z.object({
   number: z.number().int().positive(),
 })).max(MAX_SUMMARY_REFS);
 
-/**
- * Parse a client-supplied ref list into unique `{ owner, repo, number }`
- * records. Returns null when the payload is not a valid list.
- */
-export function parseSummaryRefs(value) {
-  const parsed = summaryRefsSchema.safeParse(value);
-  if (!parsed.success) {
-    return null;
-  }
-  const refs = new Map();
-  for (const ref of parsed.data) {
-    refs.set(`${ref.owner.toLowerCase()}/${ref.repo.toLowerCase()}#${ref.number}`, ref);
-  }
-  return [...refs.values()];
-}
 
 export const checkContextSchema = z.discriminatedUnion('__typename', [
   z.object({

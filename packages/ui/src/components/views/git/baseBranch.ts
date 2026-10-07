@@ -104,28 +104,6 @@ export const deriveBaseBranch = (options: {
   return 'main';
 };
 
-/**
- * Whether a base branch can be resolved locally or through one of the active
- * remote-tracking refs. Callers must not offer comparisons against the `main`
- * fallback when that ref does not actually exist in the repository.
- *
- * `remoteBranches` are remote-relative (`origin/main`, `origin/feature/x`), so
- * the remote name is dropped and the rest compared whole. A suffix test matched
- * `origin/feature/main` for a base of `main`, which passes the check and then
- * fails the comparison it was meant to prevent.
- */
-export const hasResolvableBaseBranch = (options: {
-  baseBranch: string;
-  localBranches: readonly string[];
-  remoteBranches: readonly string[];
-}): boolean => {
-  const { baseBranch, localBranches, remoteBranches } = options;
-  if (localBranches.includes(baseBranch)) return true;
-  return remoteBranches.some((branch) => {
-    const slashIndex = branch.indexOf('/');
-    return slashIndex > 0 && branch.slice(slashIndex + 1) === baseBranch;
-  });
-};
 
 /**
  * The ref a comparison should actually name, for a base the person chose or

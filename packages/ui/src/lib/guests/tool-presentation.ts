@@ -67,12 +67,6 @@ const rulesForCatalog = (guests: readonly InstalledGuest[]): GuestToolRule[] => 
   return cachedRules;
 };
 
-/** Store read outside React. Same memo as the hook. */
-export const resolveGuestToolPresentation = (fullToolName: string | undefined | null): GuestToolRule | null => {
-  if (!fullToolName) return null;
-  const rules = rulesForCatalog(useGuestsStore.getState().guests);
-  return rules.length === 0 ? null : matchGuestToolRule(rules, fullToolName);
-};
 
 /**
  * The rule for one rendered tool part. Subscribes to the catalog array only,

@@ -36,7 +36,6 @@ This module contains the OpenChamber message-stream WebSocket protocol and runti
 ### Event translation
 - `translateWireEvent(payload)`: one v2 wire event in, zero or more server-vocabulary events out.
 - `wireEventDirectory(payload)`: the directory an event belongs to, read from `payload.location.directory`.
-- `forwardTranslatedWireEvent(payload, handle)`: translate and forward, for consumers that take one handler.
 
 ### Coalescing helpers
 - `createDeltaCoalescer(...)`: merges consecutive streaming fragments before replay and fan-out. In OpenCode 2.x the merged shapes are `session.text.delta`, `session.reasoning.delta` and `session.tool.input.delta` (v1 had a single `message.part.delta`); every other event is a barrier. Text and reasoning fragments are keyed by `data.ordinal`, tool input by `data.id`.

@@ -54,19 +54,6 @@ type StatusCandidate = {
   sessionUpdatedAt: number
 }
 
-const getStatusCandidate = (state: LiveStateSlice, sessionId: string): StatusCandidate | null => {
-  const status = state.session_status?.[sessionId]
-  if (!status) {
-    return null
-  }
-
-  const session = state.session.find((candidate) => candidate.id === sessionId)
-  return {
-    status,
-    sessionUpdatedAt: session ? getSessionUpdatedAt(session) : -1,
-  }
-}
-
 const shouldReplaceStatusCandidate = (current: StatusCandidate | undefined, next: StatusCandidate): boolean => {
   if (!current) {
     return true
@@ -198,24 +185,3 @@ export function findLiveSession(states: Iterable<LiveStateSlice>, sessionID?: st
   return match
 }
 
-export function findLiveSessionStatus(
-  states: Iterable<LiveStateSlice>,
-  sessionID?: string | null,
-): SessionStatus | undefined {
-  if (!sessionID) {
-    return undefined
-  }
-
-  let match: StatusCandidate | undefined
-  for (const state of states) {
-    const next = getStatusCandidate(state, sessionID)
-    if (!next) {
-      continue
-    }
-    if (shouldReplaceStatusCandidate(match, next)) {
-      match = next
-    }
-  }
-
-  return match?.status
-}

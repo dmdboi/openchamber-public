@@ -1,10 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
-  annotationTargetCount,
   isBrowserAnnotationPayload,
   isBrowserElementTarget,
-  navStatusUrl,
   type BrowserAnnotationPayload,
   type BrowserElementTarget,
 } from '../../../../src/lib/browser/contract';
@@ -33,15 +31,6 @@ const payload: BrowserAnnotationPayload = {
   strokes: [],
 };
 
-describe('navigation status', () => {
-  test('idle carries no url; the other states carry the one they describe', () => {
-    expect(navStatusUrl({ kind: 'idle' })).toBe('');
-    expect(navStatusUrl({ kind: 'loading', url: 'http://a/' })).toBe('http://a/');
-    expect(navStatusUrl({ kind: 'ready', url: 'http://a/', title: 'A' })).toBe('http://a/');
-    expect(navStatusUrl({ kind: 'failed', url: 'http://a/', code: -6, description: 'FILE_NOT_FOUND' }))
-      .toBe('http://a/');
-  });
-});
 
 describe('element target validation', () => {
   test('accepts a fully-formed target', () => {
@@ -86,9 +75,3 @@ describe('annotation payload validation', () => {
   });
 });
 
-describe('target geometry', () => {
-  test('counts every kind of target', () => {
-    expect(annotationTargetCount(payload)).toBe(2);
-    expect(annotationTargetCount({ ...payload, elements: [], regions: [], strokes: [] })).toBe(0);
-  });
-});

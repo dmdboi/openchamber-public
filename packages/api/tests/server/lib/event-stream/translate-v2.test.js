@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { forwardTranslatedWireEvent, translateWireEvent, wireEventDirectory } from '../../../../server/lib/event-stream/translate-v2.js';
+import { translateWireEvent, wireEventDirectory } from '../../../../server/lib/event-stream/translate-v2.js';
 
 const wire = (type, data, extra = {}) => ({
   id: 'evt_1',
@@ -254,14 +254,3 @@ describe('wireEventDirectory', () => {
   });
 });
 
-describe('forwardTranslatedWireEvent', () => {
-  test('forwards every translated event in order', () => {
-    const seen = [];
-    forwardTranslatedWireEvent(wire('session.execution.succeeded', { sessionID: 's1' }), (event) => seen.push(event.type));
-    expect(seen).toEqual(['session.status', 'session.idle']);
-  });
-
-  test('does nothing without a handler', () => {
-    expect(() => forwardTranslatedWireEvent(wire('session.idle', { sessionID: 's1' }), null)).not.toThrow();
-  });
-});

@@ -6,7 +6,6 @@ import {
   MIN_VIEWPORT_SIZE,
   VIEWPORT_PRESETS,
   clampViewportSize,
-  describeViewport,
   fitViewport,
   presetViewport,
   isViewportMode,
@@ -46,11 +45,6 @@ describe('presets', () => {
     }
   });
 
-  test('names the current preset and nothing else', () => {
-    expect(describeViewport(presetViewport('ipad-mini')!)).toBe('iPad mini');
-    expect(describeViewport({ kind: 'custom', width: 500, height: 500 })).toBe('');
-    expect(describeViewport(FILL_VIEWPORT)).toBe('');
-  });
 });
 
 describe('rotation', () => {
@@ -59,11 +53,6 @@ describe('rotation', () => {
       .toEqual({ kind: 'custom', width: 844, height: 390 });
   });
 
-  test('a rotated preset stops claiming to be that preset', () => {
-    const rotated = rotateViewport(presetViewport('iphone-14')!);
-    expect(rotated.kind).toBe('custom');
-    expect(describeViewport(rotated)).toBe('');
-  });
 
   test('fill has no orientation', () => {
     expect(rotateViewport(FILL_VIEWPORT)).toEqual(FILL_VIEWPORT);

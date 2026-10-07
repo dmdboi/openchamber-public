@@ -26,10 +26,6 @@ export type BrowserNavStatus =
 
 export const IDLE_NAV_STATUS: BrowserNavStatus = { kind: 'idle' };
 
-/** The URL a nav status refers to, or '' when idle. */
-export const navStatusUrl = (status: BrowserNavStatus): string => (
-  status.kind === 'idle' ? '' : status.url
-);
 
 export type BrowserRect = {
   readonly x: number;
@@ -99,9 +95,6 @@ export type BrowserAnnotationPayload = {
   readonly strokes: ReadonlyArray<BrowserAnnotationStroke>;
 };
 
-export const annotationTargetCount = (payload: BrowserAnnotationPayload): number => (
-  payload.elements.length + payload.regions.length + payload.strokes.length
-);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === 'object' && value !== null
