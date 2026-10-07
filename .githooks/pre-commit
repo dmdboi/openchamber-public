@@ -1,0 +1,8 @@
+#!/bin/sh
+# Entrypoint for the opt-in pre-commit checks. The checks live in
+# scripts/hooks/pre-commit.mjs so they are tested and reviewed like the rest of
+# the repository. Install with `bun run hooks:install`.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+exec node "$root/scripts/hooks/pre-commit.mjs"
