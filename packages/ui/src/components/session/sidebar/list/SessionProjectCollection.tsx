@@ -45,6 +45,7 @@ import { SessionBulkActions } from '../folders/SessionBulkActions';
 import { useSessionFoldersStore } from '@/stores/useSessionFoldersStore';
 import type { useSessionProjectViewState } from '../projects/useSessionProjectViewState';
 import { useSessionDisplayStore } from '@/stores/useSessionDisplayStore';
+import type { SidebarViewMode } from '@/stores/useSessionDisplayStore';
 import { holdOrder, rankByLatestActivity } from './projectSort';
 import type { DeleteSessionConfirmState } from '../sessions/useSessionActions';
 import { useExpandedParents } from '../sessions/useExpandedParents';
@@ -118,7 +119,7 @@ type SessionProjectCollectionProps = {
     isDesktopShellRuntime: boolean;
     stickyZoneHeaders: boolean;
     projectSortOrder: import('@/stores/useSessionDisplayStore').ProjectSortOrder;
-    sidebarViewMode: import('@/stores/useSessionDisplayStore').SidebarViewMode;
+    sidebarViewMode: SidebarViewMode;
     emptyState: React.ReactNode;
     searchEmptyState: React.ReactNode;
     isSessionsLoading: boolean;

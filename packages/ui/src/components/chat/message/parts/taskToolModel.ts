@@ -91,7 +91,7 @@ export const readTaskSessionIdFromOutput = (output: string | undefined): string 
     return normalizeSessionIdCandidate(readTaskTagSessionIdFromOutput(output));
 };
 
-export const stripTaskMetadataFromOutput = (output: string): string => {
+const stripTaskMetadataFromOutput = (output: string): string => {
     return output.replace(/\n*<task_metadata>[\s\S]*?<\/task_metadata>\s*$/i, '').trimEnd();
 };
 

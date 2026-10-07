@@ -186,4 +186,3 @@ export class TTSService {
 // Export singleton instance
 /** @public */
 export const ttsService = new TTSService();
-export { TTSService };

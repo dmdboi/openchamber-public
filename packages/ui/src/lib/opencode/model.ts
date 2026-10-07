@@ -213,7 +213,7 @@ type ShellMessage = MessageBase & {
   output?: { output: string; cursor: number; size: number; truncated: boolean }
 }
 
-type CompactionMessage = MessageBase & {
+export type CompactionMessage = MessageBase & {
   role: "compaction"
   time: { created: number }
   status: "running" | "completed" | "failed"
