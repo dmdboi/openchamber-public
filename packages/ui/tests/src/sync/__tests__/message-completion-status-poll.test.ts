@@ -23,6 +23,7 @@ let sdkIdentity = {}
 
 mock.module("@/lib/opencode/client", () => ({
   opencodeClient: {
+    setDirectory: () => undefined,
     getSdkClient: () => sdkIdentity,
     getActiveSessionStatuses: mock(() => {
       statusSnapshotCalls.push(pollingDirectory)
@@ -33,12 +34,14 @@ mock.module("@/lib/opencode/client", () => ({
 
 mock.module("@/lib/runtime-switch", () => ({
   getRuntimeKey: () => runtimeKey,
+  subscribeRuntimeEndpointWillChange: () => () => undefined,
+  subscribeRuntimeEndpointChanged: () => () => undefined,
 }))
 
-import {
+const {
   maybePollStatusAfterMessageCompletion,
   MESSAGE_COMPLETION_STATUS_POLL_DELAY_MS,
-} from "../../../../src/sync/sync-context"
+} = await import("../../../../src/sync/sync-context")
 
 const createStore = (status?: SessionStatus): StoreApi<DirectoryStore> => {
   const session_status: DirectoryStore["session_status"] = {}

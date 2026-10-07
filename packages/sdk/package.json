@@ -35,9 +35,9 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit",
-    "lint": "eslint \"./{src,examples,tests}/**/*.ts\" --config ../../eslint.config.js",
+    "lint": "oxlint --config ../../oxlint.lint.config.ts",
     "bundle": "bun scripts/bundle-guest.ts",
-    "test": "node ../../scripts/run-isolated-tests.mjs tests",
+    "test": "bun --bun vitest run",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "files": [
@@ -51,5 +51,8 @@
   ],
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.4"
   }
 }

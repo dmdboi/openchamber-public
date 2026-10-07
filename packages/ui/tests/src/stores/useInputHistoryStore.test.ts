@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { vi } from 'vitest';
 
 import {
   DEFAULT_INPUT_HISTORY_LIMIT,
@@ -10,9 +11,10 @@ import type { AttachedFile } from '@/stores/types/sessionTypes';
 
 const STORAGE_KEY = 'openchamber-input-history.v1';
 
-const importStoreModule = async (): Promise<typeof import('../../../src/stores/useInputHistoryStore')> => (
-  import(`../../../src/stores/useInputHistoryStore.ts?test=${Date.now()}-${Math.random()}`)
-);
+const importStoreModule = async (): Promise<typeof import('../../../src/stores/useInputHistoryStore')> => {
+  vi.resetModules();
+  return import('../../../src/stores/useInputHistoryStore');
+};
 
 const createFakeStorage = (): Storage => {
   const store = new Map<string, string>();

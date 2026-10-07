@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import type { Agent, Message, Session } from '@/lib/opencode/model';
 import type { QueuedMessage } from '../../../src/stores/messageQueueStore';
-import { ChildStoreManager } from '@/sync/child-store';
-import { setSyncRefs } from '@/sync/sync-refs';
 
 let visibleAgents: Agent[] = [];
 const sendMessageCalls: unknown[][] = [];
@@ -29,7 +27,9 @@ mock.module('@/sync/session-ui-store', () => ({
   },
 }));
 
-import {
+const { ChildStoreManager } = await import('@/sync/child-store');
+const { setSyncRefs } = await import('@/sync/sync-refs');
+const {
   buildQueuedAutoSendPayload,
   createQueuedAutoSendRetryScheduler,
   getQueuedAutoSendRetryDelayMs,
@@ -37,7 +37,7 @@ import {
   resolveQueuedSessionStatusType,
   sendQueuedAutoSendPayload,
   shouldDispatchQueuedAutoSend,
-} from '../../../src/hooks/useQueuedMessageAutoSend';
+} = await import('../../../src/hooks/useQueuedMessageAutoSend');
 
 describe('queued auto-send retry scheduler', () => {
   test('wakes the queue when backoff expires', () => {
@@ -132,7 +132,7 @@ describe('resolveQueuedSessionStatusType', () => {
     time: { created: 1, ...(completed !== undefined ? { completed } : {}) },
   } as Message);
 
-  let childStores: ChildStoreManager;
+  let childStores: InstanceType<typeof ChildStoreManager>;
 
   beforeEach(() => {
     childStores = new ChildStoreManager();

@@ -289,8 +289,8 @@
     "watch:extension": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch --sourcemap --main-fields=module,main",
     "watch:webview": "vite build --watch",
     "type-check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
-    "lint": "bun x eslint --ext .ts,.tsx src webview tests",
-    "test": "node ../../scripts/run-isolated-tests.mjs tests",
+    "lint": "oxlint --config ../../oxlint.lint.config.ts",
+    "test": "bun --bun vitest run",
     "package": "vsce package --no-dependencies"
   },
   "devDependencies": {
@@ -301,7 +301,8 @@
     "concurrently": "^9.2.1",
     "esbuild": "^0.28.0",
     "typescript": "~5.9.0",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "vitest": "^4.1.4"
   },
   "dependencies": {
     "@openchamber/contracts": "workspace:*",

@@ -13,6 +13,6 @@
   },
   "scripts": {
     "type-check": "tsc --noEmit",
-    "lint": "eslint \"./src/**/*.ts\" --config ../../eslint.config.js"
+    "lint": "oxlint --config ../../oxlint.lint.config.ts"
   }
 }

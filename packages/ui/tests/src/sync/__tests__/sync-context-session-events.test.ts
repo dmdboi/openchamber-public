@@ -47,15 +47,15 @@ mock.module("@/lib/runtime-switch", () => ({
     return () => undefined
   },
 }))
-import {
+const {
   applySessionEventsToGlobalSessions,
   applySessionEventToGlobalSessions,
-} from "../../../../src/sync/session-event-router"
-import {
+} = await import("../../../../src/sync/session-event-router")
+const {
   registerBulkArchiveEchoes,
   releaseBulkArchiveEchoes,
   shouldConsumeBulkArchiveEcho,
-} from "../../../../src/sync/bulk-archive-echo"
+} = await import("../../../../src/sync/bulk-archive-echo")
 
 const buildSession = (title: string, time: Session["time"]): Session => ({
   id: "ses_1",

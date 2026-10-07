@@ -1,11 +1,15 @@
-const { test } = require('node:test');
-const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const os = require('node:os');
-const path = require('node:path');
-const { spawnSync } = require('node:child_process');
-const { convertVsCodeTheme, registerTheme } = require('./convert-vscode-theme.cjs');
-const { importVSCodeTheme } = require('../packages/ui/src/lib/theme/vscode/import.ts');
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+
+import { convertVsCodeTheme, registerTheme } from './convert-vscode-theme.cjs';
+import { importVSCodeTheme } from '../packages/ui/src/lib/theme/vscode/import.ts';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 test('CLI conversion shares the browser palette and stores compact registry entries', () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-vscode-cli-'));
@@ -34,7 +38,7 @@ test('CLI conversion shares the browser palette and stores compact registry entr
 });
 
 test('invalid non-interactive CLI invocations exit with deterministic human or JSON errors', () => {
-  const script = path.join(__dirname, 'convert-vscode-theme.cjs');
+  const script = path.join(here, 'convert-vscode-theme.cjs');
   for (const flags of [[], ['--quiet'], ['--json']]) {
     const result = spawnSync(process.execPath, [script, ...flags], { encoding: 'utf8', input: '' });
     assert.equal(result.status, 1);

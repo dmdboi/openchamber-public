@@ -1,4 +1,5 @@
-import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect } from 'bun:test';
+import { test } from 'vitest';
 
 import { isSpaceCreationRequest, startSpaceCreation, type SpaceModelAccess } from '../../../../src/lib/spaces/space-creation';
 import { spaceModelRefusal } from '../../../../src/lib/spaces/space-model-access';
@@ -52,10 +53,10 @@ const host = (grantAnswer: { status: number; body: { grant?: unknown; code?: str
     created.push(JSON.parse(String(init?.body)));
     return new Response(JSON.stringify({ ...entry, setup: createdSetup }), { status: 202 });
   }, originalFetch);
-  return Object.assign(grants, { created });
+  return { grants, created };
 };
 
-const start = (access: readonly SpaceModelAccess[] = [], setup = { commands: [] as string[], waitBeforeSending: false }) => startSpaceCreation({
+const start = (access: readonly SpaceModelAccess[] = [], setup: { commands: string[]; waitBeforeSending: boolean } = { commands: [], waitBeforeSending: false }) => startSpaceCreation({
   projectId: 'project-1',
   request: { projectDirectory: PROJECT, name: 'Fix login', start: 'clean', network: { mode: 'allowlist', domains: [] } },
   setup,
@@ -87,7 +88,7 @@ describe('startSpaceCreation', () => {
   });
 
   test('the waiting message goes to the space once it is ready and its access given', async () => {
-    const grants = host({ status: 200, body: { grant: { kind: 'model', id: 'openai', provider: 'openai', upstream: openai.upstream, source: { kind: 'env', name: 'OPENAI_API_KEY' }, url: 'http://gatekeeper:8080/model/openai' } } });
+    const { grants } = host({ status: 200, body: { grant: { kind: 'model', id: 'openai', provider: 'openai', upstream: openai.upstream, source: { kind: 'env', name: 'OPENAI_API_KEY' }, url: 'http://gatekeeper:8080/model/openai' } } });
     await start([openai]);
     const { outcome } = waitingMessage();
     useSpacesStore.getState().noteProgress({ spaceId: ID, step: 'ready', failure: null });

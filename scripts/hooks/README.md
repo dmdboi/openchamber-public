@@ -12,7 +12,7 @@ the size of the commit rather than the size of the repository.
 
 | Staged file | Check |
 | --- | --- |
-| `.ts`, `.tsx` inside a package lint scope | ESLint with the repository config |
+| `.ts`, `.tsx` inside a package lint scope | oxlint with the repository lint config |
 | `.js`, `.mjs`, `.cjs` | `node --check` |
 | `.json` | `JSON.parse` |
 | `.jsonc`, `knip.json`, `tsconfig*.json`, `jsconfig*.json`, `.vscode/*.json` | the TypeScript JSONC parser, which accepts comments and trailing commas |
@@ -22,10 +22,11 @@ the size of the commit rather than the size of the repository.
 
 The lint scopes are the directories each package's `lint` script covers:
 `packages/sdk/{src,examples,tests}`, `packages/ui/{src,tests}`,
-`packages/vscode/{src,webview,tests}` and `packages/web/{src,tests}`. Electron lints nothing. TypeScript outside them, such as
-`tools/oxlint` or the root `vite.config.ts`, is not linted on commit, because CI
-does not lint it either. Keep `LINT_SCOPES` in `pre-commit.mjs` in step with
-those scripts.
+`packages/vscode/{src,webview,tests}` and `packages/web/{src,tests}`. Electron and
+the JavaScript runtime packages keep their `node --check` syntax gate.
+TypeScript outside the lint scopes, such as `tools/oxlint` or the root
+`vite.config.ts`, is not linted on commit, because CI does not lint it either.
+Keep `LINT_SCOPES` in `pre-commit.mjs` in step with those scripts.
 
 Files inside `node_modules`, `dist`, `dist-bundle`, `build`, `out`, `ios` and
 `android` are skipped, as are formats no check covers. A staged deletion is
@@ -34,18 +35,14 @@ list.
 
 ## Staged tests
 
-A staged test file runs with the runner its package uses, and only that file.
+A staged test file runs with its owning package's Vitest config, and only that
+file. `VITEST_PACKAGES` in `pre-commit.mjs` maps each package to its config and
+the runtime it needs; suites that need Bun (SDK, UI, VS Code) run the Vitest
+binary under `bun --bun`. Root `scripts` tests use the repository-level
+`vitest.config.ts`.
 
-- API, CLI and web tests, including the `bun:test` files their Vitest configs
-  map to a shim, run through `vitest run` in their own package: `packages/api`,
-  `packages/cli` or `packages/web`. Keep `VITEST_PACKAGES` in `pre-commit.mjs`
-  in step with the packages whose `test` script is `vitest run`.
-- Every other test file runs through `scripts/run-isolated-tests.mjs --files`,
-  which picks Bun or Node from the file's imports and runs it from the nearest
-  `package.json` directory. Each file keeps its own process.
-
-The UI `*.vitest.tsx` files belong to the web Vitest config, so they run there
-too. A file whose imports name no runner is an error, not a silent skip.
+The UI `*.vitest.tsx` files belong to the UI Vitest config, so they run there
+too. A test file no package owns is reported as an error, not skipped silently.
 
 ## What it does not check
 
@@ -57,9 +54,10 @@ backlog is handled as its own work.
 ## Partially staged files
 
 Lint and syntax checks read a partially staged file from the index, so they
-check exactly what the commit contains. ESLint receives it through `--stdin`
-under its real path, and `node --check` receives it through stdin with the
-module type taken from the extension or the nearest `package.json`.
+check exactly what the commit contains. `node --check` receives it through stdin
+with the module type taken from the extension or the nearest `package.json`.
+oxlint has no stdin mode, so a partially staged TypeScript file is linted from
+its working-tree copy; stage everything to lint exactly what you commit.
 
 Tests cannot run from the index: a test file imports other files from disk. A
 partially staged test file runs against its working-tree copy, and the hook
@@ -86,8 +84,6 @@ Hooks run through `node`, which the repository already requires.
 
 - `.githooks/pre-commit`: the shell entrypoint git runs.
 - `scripts/hooks/pre-commit.mjs`: staged-file selection, dispatch and checks.
-- `scripts/run-isolated-tests.mjs`: runs Bun and Node test files one process at
-  a time; `--files` is the explicit mode the hook uses.
 - `scripts/hooks/install-hooks.mjs`: the installer.
-- `scripts/run-isolated-tests.test.mjs` and `scripts/hooks/*.test.mjs`: tests
-  for explicit-file mode, classification, dispatch and installation.
+- `scripts/hooks/*.test.mjs`: tests for classification, dispatch and
+  installation.

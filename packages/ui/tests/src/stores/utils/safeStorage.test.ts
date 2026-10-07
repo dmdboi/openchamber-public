@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test';
+import { vi } from 'vitest';
 
 const importSafeStorage = async () => {
-    return await import(`../../../../src/stores/utils/safeStorage.ts?test=${Date.now()}-${Math.random()}`) as typeof import('../../../../src/stores/utils/safeStorage');
+    vi.resetModules();
+    return await import('../../../../src/stores/utils/safeStorage');
 };
 
 const createFakeStorage = (): Storage => {

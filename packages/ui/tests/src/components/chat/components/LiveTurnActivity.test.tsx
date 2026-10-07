@@ -1,5 +1,6 @@
 import React, { act } from 'react';
-import { afterEach, beforeEach, describe, expect, setDefaultTimeout, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, setDefaultTimeout } from 'bun:test';
+import { test } from 'vitest';
 import { plugin } from 'bun';
 import { pathToFileURL } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -75,14 +76,21 @@ function turn(messages: ChatMessageEntry[]): TurnRecord {
     }, ...messages]).turns[0];
 }
 
-function Harness({ record, retired = false, changedFiles, isLatestTurn = true }: {
+function Harness({ record, retired = false, changedFiles, isLatestTurn = true, renderPlainMessage = false }: {
     record: TurnRecord;
     retired?: boolean;
     changedFiles?: TurnChangedFile[];
     isLatestTurn?: boolean;
+    renderPlainMessage?: boolean;
 }) {
     const [expanded, setExpanded] = React.useState(false);
-    const renderMessage = (message: ChatMessageEntry) => (
+    const renderMessage = renderPlainMessage
+        ? (message: ChatMessageEntry) => <div data-fixture-message={message.info.id}>{message.parts.flatMap((part) => {
+            if (part.type === 'text') return [part.text];
+            if (part.type === 'reasoning' && (message.info.id !== record.assistantMessages.at(-1)?.info.id || expanded)) return [part.text];
+            return [];
+        }).join('')}</div>
+        : (message: ChatMessageEntry) => (
         <div key={message.info.id} data-fixture-message={message.info.id}>
             <MessageBody
                 messageId={message.info.id} parts={message.parts} isUser={false}
@@ -154,12 +162,12 @@ describe('live Activity with the real message body', () => {
 
     test('keeps active prose and tools visible; stop folds history but leaves the answer', async () => {
         const progress = assistant('progress', [text('progress-text', 'Checking the source'), readPart], 'tool-calls');
-        await act(async () => root.render(<Harness record={turn([progress])} />));
+        await act(async () => root.render(<Harness record={turn([progress])} renderPlainMessage />));
         expect(container.textContent).toContain('Checking the source');
         expect(container.querySelector('[aria-controls]')).toBeNull();
         expect(container.textContent).not.toContain('Activity');
         const final = assistant('final', [text('final-text', 'The final answer')], 'stop');
-        await act(async () => root.render(<Harness record={turn([progress, final])} />));
+        await act(async () => root.render(<Harness record={turn([progress, final])} renderPlainMessage />));
         expect(container.textContent).toContain('The final answer');
         expect(container.textContent).not.toContain('Checking the source');
         const header = container.querySelector<HTMLButtonElement>('button[aria-controls]');
@@ -169,14 +177,14 @@ describe('live Activity with the real message body', () => {
         expect(header?.textContent).toContain('Explored codebase');
         expect(container.textContent).toContain('Checking the source');
         expect(container.textContent).toContain('The final answer');
-        await act(async () => root.render(<Harness record={turn([progress, { ...final, parts: [...final.parts] }])} />));
+        await act(async () => root.render(<Harness record={turn([progress, { ...final, parts: [...final.parts] }])} renderPlainMessage />));
         expect(header?.getAttribute('aria-expanded')).toBe('true');
     });
 
     test('keeps thinking in the final message inside Activity, not outside with the answer', async () => {
         const thinking: Part = { type: 'reasoning', id: 'thinking', messageID: 'final', sessionID: 'session', text: 'Private reasoning content', time: { start: 1, end: 2 } };
         const final = assistant('final', [thinking, text('final-text', 'Public answer')], 'stop');
-        await act(async () => root.render(<Harness record={turn([final])} />));
+        await act(async () => root.render(<Harness record={turn([final])} renderPlainMessage />));
         expect(container.textContent).toContain('Public answer');
         expect(container.textContent).not.toContain('Private reasoning content');
         await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());
@@ -186,10 +194,10 @@ describe('live Activity with the real message body', () => {
 
     test('an interrupted turn folds all prose without fabricating a final answer', async () => {
         const record = turn([assistant('progress', [text('progress-text', 'Still working'), readPart], 'tool-calls')]);
-        await act(async () => root.render(<Harness record={record} />));
+        await act(async () => root.render(<Harness record={record} renderPlainMessage />));
         expect(container.textContent).toContain('Still working');
         expect(container.textContent).not.toContain('Activity');
-        await act(async () => root.render(<Harness record={record} retired />));
+        await act(async () => root.render(<Harness record={record} retired renderPlainMessage />));
         expect(container.textContent).not.toContain('Still working');
         expect(container.textContent).toContain('Activity');
         await act(async () => container.querySelector<HTMLButtonElement>('button[aria-controls]')?.click());

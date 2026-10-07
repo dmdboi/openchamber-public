@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, mock, spyOn, test } from 'bun:test';
 import type { GitStatus } from '@/lib/api/types';
-import { useGitStore } from '../../../src/stores/useGitStore';
-import { getRuntimeKey } from '@/lib/runtime-switch';
-import { notifyGitStatusInvalidated } from '@/lib/gitStatusInvalidation';
-import { clearWorktreeBootstrapState, markWorktreeBootstrapPending } from '@/lib/worktrees/worktreeBootstrap';
 
 // The real transport has no server in tests and fails as a generic error.
 // Tests that exercise other failure modes swap this implementation; the
@@ -18,6 +14,11 @@ mock.module('@/lib/gitApiHttp', () => ({
   GitDirectoriesUnsupportedError: TestGitDirectoriesUnsupportedError,
   listGitDirectories: (root: string) => listGitDirectoriesControl.impl(root),
 }));
+
+const { useGitStore } = await import('../../../src/stores/useGitStore');
+const { getRuntimeKey } = await import('@/lib/runtime-switch');
+const { notifyGitStatusInvalidated } = await import('@/lib/gitStatusInvalidation');
+const { clearWorktreeBootstrapState, markWorktreeBootstrapPending } = await import('@/lib/worktrees/worktreeBootstrap');
 
 type Deferred<T> = {
   promise: Promise<T>;

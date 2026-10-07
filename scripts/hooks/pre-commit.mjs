@@ -3,12 +3,10 @@
 //
 // The hook reads only the staged changeset, never a whole package, so it stays
 // fast enough to run on every commit. TypeScript and TSX inside a package lint
-// scope go through the repository ESLint config, the other text formats are
+// scope go through the repository oxlint config, the other text formats are
 // syntax-checked against their staged content, and staged test files run with
-// the runner their package uses. Bun and Node tests go through
-// scripts/run-isolated-tests.mjs one file per process; API, CLI and web tests go
-// through their own package's Vitest config. See README.md beside this file for
-// the policy.
+// their owning package's Vitest config (under Bun for the suites that need the
+// Bun runtime). See README.md beside this file for the policy.
 //
 // Exit code 0 means every staged file passed, or nothing was staged. Exit code
 // 1 means a check failed or its tooling is missing, which blocks the commit.
@@ -19,13 +17,21 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { resolveBunExecutable } from '../lib/bun-executable.mjs';
+
 const require = createRequire(import.meta.url);
 const REPO_ROOT = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
-// Packages whose `test` script is `vitest run`. Their Vitest configs map
-// `bun:test` to a shim and add aliases, so their tests must not go to the
-// isolated runner.
-const VITEST_PACKAGES = ['packages/api', 'packages/cli', 'packages/web'];
-const ISOLATED_RUNNER = path.join(REPO_ROOT, 'scripts', 'run-isolated-tests.mjs');
+// Every package with a `test` script, and the runtime its suite needs. Bun is
+// required where the suite drives Bun-only APIs or resolves extensionless TS.
+const VITEST_PACKAGES = [
+  { dir: 'packages/api', runtime: 'node' },
+  { dir: 'packages/cli', runtime: 'node' },
+  { dir: 'packages/web', runtime: 'node' },
+  { dir: 'packages/electron', runtime: 'node' },
+  { dir: 'packages/sdk', runtime: 'bun' },
+  { dir: 'packages/ui', runtime: 'bun' },
+  { dir: 'packages/vscode', runtime: 'bun' },
+];
 
 // Tracked files can still slip under these directories when they are force
 // added, and generated or vendored output is not worth checking on commit.
@@ -41,8 +47,8 @@ const IGNORED_SEGMENTS = new Set([
 ]);
 
 const CHECK_BY_EXTENSION = new Map([
-  ['.ts', 'eslint'],
-  ['.tsx', 'eslint'],
+  ['.ts', 'oxlint'],
+  ['.tsx', 'oxlint'],
   ['.js', 'node-check'],
   ['.mjs', 'node-check'],
   ['.cjs', 'node-check'],
@@ -108,13 +114,13 @@ export function classifyFile(filePath, readFirstLine = () => '') {
   if (extension === '') return SHELL_SHEBANG.test(readFirstLine(filePath)) ? 'shell' : null;
   const check = CHECK_BY_EXTENSION.get(extension) ?? null;
   if (check === 'json' && JSONC_FILE.test(filePath)) return 'jsonc';
-  if (check === 'eslint' && !isLintScoped(filePath)) return null;
+  if (check === 'oxlint' && !isLintScoped(filePath)) return null;
   return check;
 }
 
 /** Groups paths by check so each tool receives one list. */
 export function buildCheckPlan(filePaths, readFirstLine) {
-  const plan = { eslint: [], 'node-check': [], json: [], jsonc: [], shell: [], yaml: [], skipped: [] };
+  const plan = { oxlint: [], 'node-check': [], json: [], jsonc: [], shell: [], yaml: [], skipped: [] };
   for (const filePath of filePaths) {
     const check = classifyFile(filePath, readFirstLine);
     if (check) plan[check].push(filePath);
@@ -139,26 +145,26 @@ export function selectTestFiles(filePaths) {
 }
 
 /**
- * The Vitest package that runs a test file, or `null` for the isolated runner.
- * The UI `*.vitest.tsx` files need the web build's Vite transforms, so they run
- * through the web config.
+ * The package whose Vitest config runs a test file. Root `scripts` tests use the
+ * repository-level config; the UI `*.vitest.tsx` cases belong to the UI config.
  */
 export function vitestPackageFor(filePath) {
-  const owner = VITEST_PACKAGES.find((packageDir) => filePath.startsWith(`${packageDir}/`));
-  if (owner) return owner;
-  return /^packages\/ui\/tests\/src\/.*\.vitest\.tsx$/.test(filePath) ? 'packages/web' : null;
+  const owner = VITEST_PACKAGES.find((entry) => filePath.startsWith(`${entry.dir}/`));
+  if (owner) return owner.dir;
+  if (filePath.startsWith('scripts/')) return '';
+  return null;
 }
 
-/** Groups staged test files by Vitest package; the rest go to the isolated runner. */
+/** Groups staged test files by owning Vitest package. */
 export function planTestRuns(filePaths) {
   const vitest = {};
-  const isolated = [];
+  const unknown = [];
   for (const filePath of filePaths) {
     const packageDir = vitestPackageFor(filePath);
-    if (packageDir) (vitest[packageDir] ??= []).push(filePath);
-    else isolated.push(filePath);
+    if (packageDir === null) unknown.push(filePath);
+    else (vitest[packageDir] ??= []).push(filePath);
   }
-  return { vitest, isolated };
+  return { vitest, unknown };
 }
 
 const runGitPaths = (args) => parseStagedPaths(
@@ -237,33 +243,22 @@ function selectPresentFiles(filePaths) {
   return present;
 }
 
-// Files read from disk go to one ESLint run. A partially staged file goes
-// through stdin with its index content, under its own path so the config still
-// matches it.
-function eslintFailures(files, partialPaths, readContent) {
+// Files read from disk go to one oxlint run. oxlint has no stdin mode, so a
+// partially staged file is checked from its working-tree copy; stage everything
+// to lint exactly what the commit contains.
+function oxlintFailures(files) {
   if (files.length === 0) return [];
-  const binary = path.join(REPO_ROOT, 'node_modules', 'eslint', 'bin', 'eslint.js');
+  const binary = path.join(REPO_ROOT, 'node_modules', 'oxlint', 'bin', 'oxlint');
   if (!existsSync(binary)) {
-    return ['ESLint is not installed; run `bun install` before committing.'];
+    return ['oxlint is not installed; run `bun install` before committing.'];
   }
-  const partial = new Set(partialPaths);
-  const runs = [];
-  const fromDisk = files.filter((file) => !partial.has(file));
-  if (fromDisk.length > 0) runs.push({ args: fromDisk });
-  for (const file of files.filter((candidate) => partial.has(candidate))) {
-    runs.push({ args: ['--stdin', '--stdin-filename', file], input: readContent(file) });
-  }
-  let reported = false;
-  for (const { args, input } of runs) {
-    const result = spawnSync(process.execPath, [binary, '--no-color', ...args], {
-      cwd: REPO_ROOT,
-      input,
-      stdio: [input === undefined ? 'inherit' : 'pipe', 'inherit', 'inherit'],
-    });
-    if (result.error) return [`ESLint failed to start: ${result.error.message}`];
-    if (result.status !== 0) reported = true;
-  }
-  return reported ? ['ESLint reported problems in the staged TypeScript files above.'] : [];
+  const result = spawnSync(
+    process.execPath,
+    [binary, '--config', path.join(REPO_ROOT, 'oxlint.lint.config.ts'), ...files],
+    { cwd: REPO_ROOT, stdio: 'inherit' },
+  );
+  if (result.error) return [`oxlint failed to start: ${result.error.message}`];
+  return result.status === 0 ? [] : ['oxlint reported problems in the staged TypeScript files above.'];
 }
 
 function checkJavaScript(source, inputType) {
@@ -363,40 +358,30 @@ function yamlFailures(files, readContent) {
   return failures;
 }
 
-// Bun and Node tests run through the isolated runner one file per process. It
-// resolves the framework from each file and uses the package-relative cwd.
-function isolatedTestFailures(files) {
-  if (files.length === 0) return [];
-  const result = spawnSync(
-    process.execPath,
-    [ISOLATED_RUNNER, '--files', ...files.map((file) => path.resolve(REPO_ROOT, file))],
-    { cwd: REPO_ROOT, stdio: 'inherit' },
-  );
-  if (result.error) return [`isolated test runner failed to start: ${result.error.message}`];
-  return result.status === 0 ? [] : ['staged Bun and Node tests failed above.'];
-}
-
-// Each Vitest package runs its staged files once, from its own directory, so
-// its config and its `bun:test` shim apply.
+// Each package runs its staged files once, from its own directory, so its config
+// and its `bun:test` shim apply. Suites that need the Bun runtime run the Vitest
+// binary under `bun --bun`.
 function vitestFailures(filesByPackage) {
   const failures = [];
   for (const [packageDir, files] of Object.entries(filesByPackage)) {
-    const packageRoot = path.join(REPO_ROOT, packageDir);
+    const packageRoot = packageDir ? path.join(REPO_ROOT, packageDir) : REPO_ROOT;
     const binary = path.join(packageRoot, 'node_modules', 'vitest', 'vitest.mjs');
     if (!existsSync(binary)) {
-      failures.push(`${packageDir}: Vitest is not installed; run \`bun install\` before committing.`);
+      failures.push(`${packageDir || 'root'}: Vitest is not installed; run \`bun install\` before committing.`);
       continue;
     }
-    const result = spawnSync(
-      process.execPath,
-      [binary, 'run', ...files.map((file) => path.resolve(REPO_ROOT, file))],
-      { cwd: packageRoot, stdio: 'inherit' },
-    );
-    if (result.error) failures.push(`${packageDir}: Vitest failed to start: ${result.error.message}`);
-    else if (result.status !== 0) failures.push(`${packageDir}: staged Vitest tests failed above.`);
+    const args = ['run', ...files.map((file) => path.resolve(REPO_ROOT, file))];
+    const result = runtimeForPackage(packageDir) === 'bun'
+      ? spawnSync(resolveBunExecutable(), ['--bun', binary, ...args], { cwd: packageRoot, stdio: 'inherit' })
+      : spawnSync(process.execPath, [binary, ...args], { cwd: packageRoot, stdio: 'inherit' });
+    if (result.error) failures.push(`${packageDir || 'root'}: Vitest failed to start: ${result.error.message}`);
+    else if (result.status !== 0) failures.push(`${packageDir || 'root'}: staged Vitest tests failed above.`);
   }
   return failures;
 }
+
+const runtimeForPackage = (packageDir) =>
+  VITEST_PACKAGES.find((entry) => entry.dir === packageDir)?.runtime ?? 'bun';
 
 function main() {
   const staged = readStagedPaths();
@@ -421,18 +406,18 @@ function main() {
   }
   if (testFiles.length > 0) {
     const vitestCount = Object.values(testRuns.vitest).reduce((count, files) => count + files.length, 0);
-    console.log(`pre-commit: running ${testFiles.length} staged test file(s) (${vitestCount} Vitest, ${testRuns.isolated.length} isolated).`);
+    console.log(`pre-commit: running ${testFiles.length} staged test file(s) (${vitestCount} Vitest, ${testRuns.unknown.length} unrecognized).`);
   }
 
   const failures = [
-    ...eslintFailures(plan.eslint, partial, readContent),
+    ...oxlintFailures(plan.oxlint),
     ...nodeCheckFailures(plan['node-check'], readContent),
     ...jsonFailures(plan.json, readContent),
     ...jsoncFailures(plan.jsonc, readContent),
     ...shellFailures(plan.shell, readContent),
     ...yamlFailures(plan.yaml, readContent),
-    ...isolatedTestFailures(testRuns.isolated),
     ...vitestFailures(testRuns.vitest),
+    ...testRuns.unknown.map((file) => `${file}: no Vitest package owns this test file.`),
   ];
 
   if (failures.length > 0) {

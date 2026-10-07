@@ -73,9 +73,10 @@ bun run hooks:install
 
 That points `core.hooksPath` at the committed `.githooks/` directory for this
 clone. The hook checks only the files in your staged changeset, never a whole
-package: ESLint for TypeScript and TSX in the directories the package `lint`
-scripts cover, syntax checks for JavaScript, JSON, shell and YAML, and the
-staged test files run with the runner their package uses. It does not run the anti-slop linter or a full package suite, so it stays
+package: oxlint for TypeScript and TSX in the directories the package `lint`
+scripts cover, syntax checks for JavaScript, JSON, shell and YAML, and each
+staged test file runs with its package's Vitest config. It does not run the
+anti-slop linter or a full package suite, so it stays
 quick. Run `bun run test` before opening a pull request.
 
 Lint and syntax checks read the staged content of each file. Staged tests run
@@ -193,11 +194,14 @@ bun run test         # Must pass
 bun run build        # Must succeed
 ```
 
-`bun run test` runs every suite in the repository: shared UI, VS Code, Electron,
-web/server, and the root scripts. The UI, VS Code, and Electron suites keep
-module-level singletons, so `scripts/run-isolated-tests.mjs` gives each test file
-its own process instead of letting load order decide the result. Run a single
-file directly while iterating (`bun test <file>`).
+`bun run test` runs every suite in the repository on Vitest: the root scripts,
+shared UI, VS Code, Electron, SDK, web/server, API and CLI. It runs the UI and
+API suites together, since they take most of the time and use separate
+processes. Each test file has its own Vitest worker, so module-level singletons
+cannot leak between files by load order. The suites that need Bun (SDK, UI,
+VS Code, root scripts) run Vitest under `bun --bun`. Run a single file while
+iterating (`bunx vitest run <file>` from the package, or
+`bun run --cwd packages/ui vitest run <file>`).
 
 For docs-only changes, validation may be enough:
 

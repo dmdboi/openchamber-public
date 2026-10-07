@@ -32,12 +32,16 @@ describe('VS Code OpenCode upgrades', () => {
       const url = String(input);
       return Response.json({ version: url.endsWith('/api/info') ? '2.0.21' : '2.0.22' });
     });
+    // SAFETY: Vitest exposes each mock call as its argument tuple at runtime.
+    const calls = fetch.mock.calls as unknown as unknown[][];
     try {
       const status = await getOpenCodeUpgradeStatus(createManager());
       assert.equal(status.latestVersion, '2.0.22');
-      const call = fetch.mock.calls.find((entry) => String(entry.arguments[0]).includes('mirror.example.com'));
-      assert.equal(String(call?.arguments[0]), 'https://mirror.example.com/npm/@opencode%2Fcli/latest');
-      assert.equal(new Headers(call?.arguments[1]?.headers).get('Authorization'), `Basic ${Buffer.from('user:p@ss').toString('base64')}`);
+      const call = calls.find((entry) => String(entry[0]).includes('mirror.example.com'));
+      assert.equal(String(call?.[0]), 'https://mirror.example.com/npm/@opencode%2Fcli/latest');
+      // SAFETY: the second mock argument is the RequestInit passed to fetch.
+      const init = call?.[1] as RequestInit | undefined;
+      assert.equal(new Headers(init?.headers).get('Authorization'), `Basic ${Buffer.from('user:p@ss').toString('base64')}`);
     } finally {
       fetch.mock.restore();
     }
@@ -47,11 +51,13 @@ describe('VS Code OpenCode upgrades', () => {
     process.env.npm_config_userconfig = `${import.meta.dirname}/missing-test.npmrc`;
     process.env.npm_config_registry = 'not-a-url';
     const fetch = mock.method(globalThis, 'fetch', async () => Response.json({ version: '2.0.21' }));
+    // SAFETY: Vitest exposes each mock call as its argument tuple at runtime.
+    const calls = fetch.mock.calls as unknown as unknown[][];
     try {
       const status = await getOpenCodeUpgradeStatus(createManager());
       assert.equal(status.available, null);
       assert.equal(status.error, 'Invalid npm registry URL');
-      assert.equal(fetch.mock.calls.some((entry) => String(entry.arguments[0]).includes('registry.npmjs.org')), false);
+      assert.equal(calls.some((entry) => String(entry[0]).includes('registry.npmjs.org')), false);
     } finally {
       fetch.mock.restore();
     }

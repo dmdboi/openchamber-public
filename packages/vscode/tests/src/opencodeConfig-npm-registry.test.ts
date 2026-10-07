@@ -18,10 +18,14 @@ test('plugin metadata uses the shared resolver with credential-safe URLs', async
   const fetch = mock.method(globalThis, 'fetch', async () => Response.json({
     'dist-tags': { latest: '1.2.3' }, versions: { '1.2.3': {} },
   }));
+  // SAFETY: Vitest exposes each mock call as its argument tuple at runtime.
+  const calls = fetch.mock.calls as unknown as unknown[][];
   try {
     const response = await queryPluginRegistry(['@scope/credential-test']);
     assert.equal(response.results[0]?.kind, 'npm-ok');
-    const [url, init] = fetch.mock.calls[0].arguments;
+    const [url] = calls[0];
+    // SAFETY: the second mock argument is the RequestInit passed to fetch.
+    const init = calls[0]?.[1] as RequestInit | undefined;
     assert.equal(String(url), 'https://mirror.example.com/custom/npm/@scope%2Fcredential-test');
     assert.equal(new Headers(init?.headers).get('Authorization'), `Basic ${Buffer.from('user:p@ss').toString('base64')}`);
   } finally {

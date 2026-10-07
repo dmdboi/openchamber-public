@@ -20,14 +20,14 @@ mock.module('@/components/ui', () => ({
 }));
 
 import { I18nProvider } from '@/lib/i18n';
-import {
+import type { Autosave, AutosaveResult } from '../../../../../src/components/sections/shared/SettingsAutosave';
+
+const {
   useAutosave,
   AUTOSAVE_SAVED,
   AUTOSAVE_UNCHANGED,
   autosaveFailed,
-  type Autosave,
-  type AutosaveResult,
-} from '../../../../../src/components/sections/shared/SettingsAutosave';
+} = await import('../../../../../src/components/sections/shared/SettingsAutosave');
 
 let window: Window;
 let container: HTMLElement;

@@ -26,7 +26,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { I18nProvider } from "@/lib/i18n";
-import { NumberInput } from "../../../../src/components/ui/number-input";
 
 // --- Minimal DOM stub ----------------------------------------------------
 
@@ -241,6 +240,8 @@ mock.module("@/lib/device", () => ({
   isMobileDeviceViaCSS: () => false,
   useTabletStandalonePwaRuntime: () => false,
 }));
+
+const { NumberInput } = await import("../../../../src/components/ui/number-input");
 
 // --- Test harness --------------------------------------------------------
 

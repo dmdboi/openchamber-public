@@ -28,8 +28,8 @@ test('parseStagedPaths returns nothing for empty output', () => {
 });
 
 test('classifyFile routes each supported extension', () => {
-  assert.equal(classifyFile('packages/ui/src/a.ts'), 'eslint');
-  assert.equal(classifyFile('packages/web/src/a.tsx'), 'eslint');
+  assert.equal(classifyFile('packages/ui/src/a.ts'), 'oxlint');
+  assert.equal(classifyFile('packages/web/src/a.tsx'), 'oxlint');
   assert.equal(classifyFile('src/a.js'), 'node-check');
   assert.equal(classifyFile('src/a.mjs'), 'node-check');
   assert.equal(classifyFile('src/a.cjs'), 'node-check');
@@ -41,12 +41,12 @@ test('classifyFile routes each supported extension', () => {
 });
 
 test('classifyFile lints TypeScript only inside a package lint scope', () => {
-  assert.equal(classifyFile('packages/sdk/examples/panel/index.ts'), 'eslint');
-  assert.equal(classifyFile('packages/vscode/webview/main.tsx'), 'eslint');
-  assert.equal(classifyFile('packages/sdk/tests/src/manifest.test.ts'), 'eslint');
-  assert.equal(classifyFile('packages/vscode/tests/src/bridge.test.ts'), 'eslint');
-  assert.equal(classifyFile('packages/web/tests/src/api/runtime.test.ts'), 'eslint');
-  assert.equal(classifyFile('packages/ui/tests/src/lib/a.test.ts'), 'eslint');
+  assert.equal(classifyFile('packages/sdk/examples/panel/index.ts'), 'oxlint');
+  assert.equal(classifyFile('packages/vscode/webview/main.tsx'), 'oxlint');
+  assert.equal(classifyFile('packages/sdk/tests/src/manifest.test.ts'), 'oxlint');
+  assert.equal(classifyFile('packages/vscode/tests/src/bridge.test.ts'), 'oxlint');
+  assert.equal(classifyFile('packages/web/tests/src/api/runtime.test.ts'), 'oxlint');
+  assert.equal(classifyFile('packages/ui/tests/src/lib/a.test.ts'), 'oxlint');
   assert.equal(classifyFile('packages/electron/main.ts'), null);
   assert.equal(classifyFile('tools/oxlint/rule.ts'), null);
   assert.equal(classifyFile('vite.config.ts'), null);
@@ -101,7 +101,7 @@ test('buildCheckPlan groups files by check and keeps them unchanged', () => {
     'deploy.yml',
     'README.md',
   ]);
-  assert.deepEqual(plan.eslint, ['packages/ui/src/a.ts', 'packages/ui/src/with space/b.ts']);
+  assert.deepEqual(plan.oxlint, ['packages/ui/src/a.ts', 'packages/ui/src/with space/b.ts']);
   assert.deepEqual(plan['node-check'], ['src/c.js']);
   assert.deepEqual(plan.json, ['package.json']);
   assert.deepEqual(plan.jsonc, ['knip.json']);
@@ -133,15 +133,16 @@ test('selectTestFiles includes the UI vitest files and skips ignored directories
   assert.equal(isTestFile('packages/ui/vitest.config.ts'), false);
 });
 
-test('vitestPackageFor routes API, CLI, web and UI vitest files to their Vitest package', () => {
+test('vitestPackageFor routes test files to their owning Vitest package', () => {
   assert.equal(vitestPackageFor('packages/api/tests/server/lib/relay/service.test.js'), 'packages/api');
   assert.equal(vitestPackageFor('packages/cli/tests/bin/cli.test.js'), 'packages/cli');
   assert.equal(vitestPackageFor('packages/web/dir with space/a.test.ts'), 'packages/web');
-  assert.equal(vitestPackageFor('packages/ui/tests/src/components/views/Thing.vitest.tsx'), 'packages/web');
-  assert.equal(vitestPackageFor('packages/ui/tests/src/lib/a.test.ts'), null);
+  assert.equal(vitestPackageFor('packages/ui/tests/src/components/views/Thing.vitest.tsx'), 'packages/ui');
+  assert.equal(vitestPackageFor('packages/ui/tests/src/lib/a.test.ts'), 'packages/ui');
+  assert.equal(vitestPackageFor('packages/vscode/tests/src/bridge.test.ts'), 'packages/vscode');
+  assert.equal(vitestPackageFor('packages/electron/tests/updater-check.test.mjs'), 'packages/electron');
+  assert.equal(vitestPackageFor('scripts/bump-version.test.mjs'), '');
   assert.equal(vitestPackageFor('packages/apis/a.test.ts'), null);
-  assert.equal(vitestPackageFor('packages/electron/tests/updater-check.test.mjs'), null);
-  assert.equal(vitestPackageFor('scripts/bump-version.test.mjs'), null);
 });
 
 test('planTestRuns groups Vitest files by package and keeps paths intact', () => {
@@ -152,8 +153,9 @@ test('planTestRuns groups Vitest files by package and keeps paths intact', () =>
     'packages/web/tests/src/api/runtime.test.ts',
     'packages/ui/tests/src/components/views/Thing.vitest.tsx',
     'packages/ui/tests/src/lib/with space.test.ts',
-    'packages/vscode/src/bridge.test.ts',
-    'scripts/run-isolated-tests.test.mjs',
+    'packages/vscode/tests/src/bridge.test.ts',
+    'scripts/bump-version.test.mjs',
+    'docs/unowned.test.ts',
   ]);
   assert.deepEqual(runs.vitest, {
     'packages/api': [
@@ -161,16 +163,15 @@ test('planTestRuns groups Vitest files by package and keeps paths intact', () =>
       'packages/api/tests/server/lib/relay/e2ee.test.js',
     ],
     'packages/cli': ['packages/cli/tests/bin/cli.test.js'],
-    'packages/web': [
-      'packages/web/tests/src/api/runtime.test.ts',
+    'packages/web': ['packages/web/tests/src/api/runtime.test.ts'],
+    'packages/ui': [
       'packages/ui/tests/src/components/views/Thing.vitest.tsx',
+      'packages/ui/tests/src/lib/with space.test.ts',
     ],
+    'packages/vscode': ['packages/vscode/tests/src/bridge.test.ts'],
+    '': ['scripts/bump-version.test.mjs'],
   });
-  assert.deepEqual(runs.isolated, [
-    'packages/ui/tests/src/lib/with space.test.ts',
-    'packages/vscode/src/bridge.test.ts',
-    'scripts/run-isolated-tests.test.mjs',
-  ]);
+  assert.deepEqual(runs.unknown, ['docs/unowned.test.ts']);
 });
 
 test('readStagedPaths asks git for cached additions, copies, modifications and renames', () => {
